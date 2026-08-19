@@ -37,11 +37,11 @@ export class IndexedDbRepository<T> implements StorageRepository<T> {
 
   private openDb(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
-      if (typeof window === 'undefined' || !window.indexedDB) {
+      if (typeof globalThis === 'undefined' || !globalThis.indexedDB) {
         reject(new Error('IndexedDB is not supported in this environment.'));
         return;
       }
-      const request = window.indexedDB.open(this.dbName, this.dbVersion);
+      const request = globalThis.indexedDB.open(this.dbName, this.dbVersion);
 
       request.onerror = () => reject(request.error);
       request.onsuccess = () => resolve(request.result);

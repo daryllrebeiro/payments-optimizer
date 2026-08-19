@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "PaymentsOptimizer",
+  "version": "0.5.0",
+  "description": "Privacy-first, local-first payment optimizer. See exactly how to save the most on every online purchase.",
+  "action": {},
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.amazon.in/*", "https://www.amazon.com/*", "https://www.flipkart.com/*"],
+      "js": ["content-script.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "permissions": ["storage", "activeTab"],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
+  "web_accessible_resources": []
+}

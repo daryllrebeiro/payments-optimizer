@@ -1,0 +1,25 @@
+{
+  "name": "@payments-optimizer/extension",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@payments-optimizer/domain": "workspace:*",
+    "@payments-optimizer/merchant-detector": "workspace:*",
+    "@payments-optimizer/optimizer": "workspace:*",
+    "@payments-optimizer/profile": "workspace:*",
+    "@payments-optimizer/rules-engine": "workspace:*",
+    "@payments-optimizer/security": "workspace:*",
+    "@payments-optimizer/storage": "workspace:*",
+    "@payments-optimizer/test-fixtures": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.2.6",
+    "vite": "^5.4.0"
+  }
+}

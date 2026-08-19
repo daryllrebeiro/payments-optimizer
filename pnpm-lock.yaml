@@ -42,7 +42,51 @@ importers:
         specifier: ^2.0.5
         version: 2.1.9(@types/node@20.19.43)(supports-color@7.2.0)
 
+  apps/extension:
+    dependencies:
+      '@payments-optimizer/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@payments-optimizer/merchant-detector':
+        specifier: workspace:*
+        version: link:../../packages/merchant-detector
+      '@payments-optimizer/optimizer':
+        specifier: workspace:*
+        version: link:../../packages/optimizer
+      '@payments-optimizer/profile':
+        specifier: workspace:*
+        version: link:../../packages/profile
+      '@payments-optimizer/rules-engine':
+        specifier: workspace:*
+        version: link:../../packages/rules-engine
+      '@payments-optimizer/security':
+        specifier: workspace:*
+        version: link:../../packages/security
+      '@payments-optimizer/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
+      '@payments-optimizer/test-fixtures':
+        specifier: workspace:*
+        version: link:../../packages/test-fixtures
+    devDependencies:
+      '@types/chrome':
+        specifier: ^0.2.6
+        version: 0.2.6
+      vite:
+        specifier: ^5.4.0
+        version: 5.4.21(@types/node@20.19.43)
+
   packages/domain: {}
+
+  packages/merchant-detector:
+    dependencies:
+      '@payments-optimizer/domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      '@payments-optimizer/test-fixtures':
+        specifier: workspace:*
+        version: link:../test-fixtures
 
   packages/optimizer:
     dependencies:
@@ -658,8 +702,20 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@types/chrome@0.2.6':
+    resolution: {integrity: sha512-8OgXtL+OcR2IpY2ul5itg0R3xmdceAM4ldcHxh4BFL20p5z7fjhpyP5KuXAp1LIxA7oQgyViKTS9d+W8Sn8jdQ==}
+
   '@types/estree@1.0.9':
     resolution: {integrity: sha512-GhdPgy1el4/ImP05X05Uw4cw2/M93BCUmnEvWZNStlCzEKME4Fkk+YpoA5OiHNQmoS7Cafb8Xa3Pya8m1Qrzeg==}
+
+  '@types/filesystem@0.0.36':
+    resolution: {integrity: sha512-vPDXOZuannb9FZdxgHnqSwAG/jvdGM8Wq+6N4D/d80z+D4HWH+bItqsZaVRQykAn6WEVeEkLm2oQigyHtgb0RA==}
+
+  '@types/filewriter@0.0.33':
+    resolution: {integrity: sha512-xFU8ZXTw4gd358lb2jw25nxY9QAgqn2+bKKjKOYfNCzN4DKCFetK7sPtrlpg66Ywe3vWY9FNxprZawAh9wfJ3g==}
+
+  '@types/har-format@1.2.16':
+    resolution: {integrity: sha512-fluxdy7ryD3MV6h8pTfTYpy/xQzCFC7m89nOH9y94cNqJ1mDIDPut7MnRHI3F6qRmh/cT2fUjG1MLdCNb4hE9A==}
 
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
@@ -1761,7 +1817,20 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.62.4':
     optional: true
 
+  '@types/chrome@0.2.6':
+    dependencies:
+      '@types/filesystem': 0.0.36
+      '@types/har-format': 1.2.16
+
   '@types/estree@1.0.9': {}
+
+  '@types/filesystem@0.0.36':
+    dependencies:
+      '@types/filewriter': 0.0.33
+
+  '@types/filewriter@0.0.33': {}
+
+  '@types/har-format@1.2.16': {}
 
   '@types/json-schema@7.0.15': {}
 
