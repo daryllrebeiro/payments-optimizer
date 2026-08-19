@@ -2,13 +2,12 @@
  * PaymentsOptimizer Extension — Background Service Worker
  *
  * Responsibilities:
- *  1. Listen for OPTIMIZE_PAYMENT messages from content scripts
- *  2. Load user profile from chrome.storage (or seed a default on first run)
- *  3. Run generateCandidates → filterDominated → rankStrategies
- *  4. Return serialized results to the content script
- *
- * IMPORTANT (Manifest V3): Service workers are ephemeral.
- * State MUST NOT be kept in module-level variables — use chrome.storage.
+ *  1. Load and validate the public database JSON on startup
+ *  2. Listen for OPTIMIZE_PAYMENT messages from content scripts
+ *  3. Query active, non-expired offers and coupons for the merchant
+ *  4. Load user profile from chrome.storage
+ *  5. Run generateCandidates → filterDominated → rankStrategies
+ *  6. Cache recommendations by tabId in session storage and return serialised results
  */
 
 import {
@@ -16,13 +15,12 @@ import {
   filterDominated,
   rankStrategies,
 } from '@payments-optimizer/optimizer';
-import type { UserProfile, Offer, Coupon } from '@payments-optimizer/domain';
+import type { UserProfile } from '@payments-optimizer/domain';
+import { PublicDataManager } from '@payments-optimizer/offer-engine';
 import {
   hdfcMillenniaCard,
   sbiCashbackCard,
   axisAtlasCard,
-  hdfcInstantDiscountOffer,
-  amazonCoupon,
 } from '@payments-optimizer/test-fixtures';
 import type {
   ContentToBackgroundMessage,
@@ -31,8 +29,22 @@ import type {
 } from '../types/messages.js';
 import { deserializeCart, serializeStrategy } from '../types/messages.js';
 
+// Import public data bundle directly (Vite parses JSON automatically)
+import offersBundle from '../../../../data/offers-bundle.json';
+
+// Initialize and seed public data manager
+const dataManager = new PublicDataManager();
+try {
+  dataManager.loadBundle(offersBundle);
+  console.info(
+    `[PaymentsOptimizer] Public data bundle loaded successfully. Version: ${dataManager.getVersionInfo()?.dataVersion}`
+  );
+} catch (err) {
+  console.error('[PaymentsOptimizer] Failed to validate public data bundle:', err);
+}
+
 // ── Default seed profile ─────────────────────────────────────────────────────
-// Used on first run until the user configures their own profile via UI (Phase 6).
+// Used on first run until the user configures their own profile via UI.
 
 const DEFAULT_PROFILE: UserProfile = {
   version: 1,
@@ -58,11 +70,6 @@ const DEFAULT_PROFILE: UserProfile = {
   },
 };
 
-// ── Public offer data (Phase 7 will load this from a versioned data bundle) ──
-
-const PUBLIC_OFFERS: Offer[] = [hdfcInstantDiscountOffer];
-const PUBLIC_COUPONS: Coupon[] = [amazonCoupon];
-
 // ── Message listener ─────────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener(
@@ -80,11 +87,15 @@ chrome.runtime.onMessage.addListener(
         try {
           const cart = deserializeCart(msg.payload.cartJson);
 
-          // Phase 4 would load this from IndexedDB/chrome.storage.local.
-          // For now we use the seeded default profile.
-          const profile = DEFAULT_PROFILE;
+          // Retrieve active tab profile, fallback to seeded default
+          const localData = await chrome.storage.local.get('user-profile');
+          const profile = (localData['user-profile'] as UserProfile) || DEFAULT_PROFILE;
 
-          const candidates = generateCandidates(cart, profile, PUBLIC_OFFERS, PUBLIC_COUPONS);
+          // Query dynamic active offers and coupons from validated PublicDataManager
+          const offers = dataManager.getOffersForMerchant(cart.merchantId);
+          const coupons = dataManager.getCouponsForMerchant(cart.merchantId);
+
+          const candidates = generateCandidates(cart, profile, offers, coupons);
           const pruned = filterDominated(candidates);
           const ranked = rankStrategies(pruned, profile.optimizationPreferences);
 

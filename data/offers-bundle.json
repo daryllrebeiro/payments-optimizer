@@ -1,0 +1,166 @@
+{
+  "schemaVersion": 1,
+  "dataVersion": "2026.08.19.1",
+  "createdAt": "2026-08-19T10:00:00Z",
+  "checksum": "sha256-publicdatabundlesignature",
+  "cards": [
+    {
+      "id": "hdfc-millennia",
+      "issuer": "HDFC",
+      "productName": "Millennia",
+      "network": "MASTERCARD",
+      "rewardProgram": "HDFC Millennia Points",
+      "annualFee": {
+        "amountMinor": 100000,
+        "currency": "INR"
+      },
+      "rewardRules": [
+        {
+          "id": "hdfc-millennia-amazon",
+          "rewardType": "POINTS",
+          "rate": 0.05,
+          "merchantIds": ["amazon"],
+          "maximumReward": {
+            "amountMinor": 100000,
+            "currency": "INR"
+          },
+          "period": "MONTHLY"
+        },
+        {
+          "id": "hdfc-millennia-other",
+          "rewardType": "POINTS",
+          "rate": 0.01,
+          "maximumReward": {
+            "amountMinor": 100000,
+            "currency": "INR"
+          },
+          "period": "MONTHLY"
+        }
+      ]
+    },
+    {
+      "id": "sbi-cashback",
+      "issuer": "SBI",
+      "productName": "Cashback Card",
+      "network": "VISA",
+      "rewardProgram": "SBI Cashback Program",
+      "annualFee": {
+        "amountMinor": 99900,
+        "currency": "INR"
+      },
+      "rewardRules": [
+        {
+          "id": "sbi-cashback-online",
+          "rewardType": "CASHBACK",
+          "rate": 0.05,
+          "maximumReward": {
+            "amountMinor": 500000,
+            "currency": "INR"
+          },
+          "period": "MONTHLY"
+        }
+      ]
+    },
+    {
+      "id": "axis-atlas",
+      "issuer": "AXIS",
+      "productName": "Atlas",
+      "network": "VISA",
+      "rewardProgram": "Axis Edge Miles",
+      "annualFee": {
+        "amountMinor": 500000,
+        "currency": "INR"
+      },
+      "rewardRules": [
+        {
+          "id": "axis-atlas-default",
+          "rewardType": "MILES",
+          "rate": 0.02,
+          "period": "MONTHLY"
+        }
+      ],
+      "milestoneRules": [
+        {
+          "id": "axis-atlas-milestone-4l",
+          "targetSpend": {
+            "amountMinor": 40000000,
+            "currency": "INR"
+          },
+          "reward": {
+            "amountMinor": 500000,
+            "currency": "INR"
+          },
+          "rewardType": "MILES",
+          "period": "ANNUAL"
+        }
+      ]
+    }
+  ],
+  "offers": [
+    {
+      "id": "offer-hdfc-instant",
+      "merchantId": "amazon",
+      "title": "HDFC Instant Discount",
+      "description": "10% instant discount up to ₹1,500 with HDFC Cards",
+      "validFrom": "2026-08-01T00:00:00Z",
+      "validUntil": "2026-08-31T23:59:59Z",
+      "conditions": [
+        {
+          "type": "MINIMUM_SPEND",
+          "value": {
+            "amountMinor": 500000,
+            "currency": "INR"
+          }
+        }
+      ],
+      "benefit": {
+        "type": "PERCENTAGE_DISCOUNT",
+        "value": 0.1,
+        "cap": {
+          "amountMinor": 150000,
+          "currency": "INR"
+        }
+      },
+      "paymentRequirements": [
+        {
+          "methodType": "CREDIT_CARD",
+          "issuer": "HDFC"
+        }
+      ],
+      "stackingPolicy": {
+        "canStackWithCoupons": true,
+        "canStackWithGiftCards": true
+      },
+      "source": {
+        "type": "OFFICIAL",
+        "retrievedAt": "2026-08-19T10:00:00Z"
+      },
+      "confidence": "HIGH"
+    }
+  ],
+  "coupons": [
+    {
+      "id": "coupon-amz-1000",
+      "merchantId": "amazon",
+      "code": "SAVE1000",
+      "benefit": {
+        "type": "FIXED_DISCOUNT",
+        "value": {
+          "amountMinor": 100000,
+          "currency": "INR"
+        }
+      },
+      "conditions": [
+        {
+          "type": "MINIMUM_SPEND",
+          "value": {
+            "amountMinor": 1500000,
+            "currency": "INR"
+          }
+        }
+      ],
+      "validUntil": "2026-08-31T23:59:59Z",
+      "stackability": "STACKABLE"
+    }
+  ]
+}

@@ -11,6 +11,7 @@
   "dependencies": {
     "@payments-optimizer/domain": "workspace:*",
     "@payments-optimizer/merchant-detector": "workspace:*",
+    "@payments-optimizer/offer-engine": "workspace:*",
     "@payments-optimizer/optimizer": "workspace:*",
     "@payments-optimizer/profile": "workspace:*",
     "@payments-optimizer/rules-engine": "workspace:*",
