@@ -21,7 +21,7 @@ This project is structured as a TypeScript monorepo using **pnpm workspaces**:
 ```
 payments-optimizer/
 ├── apps/
-│   └── extension/          # Planned Chrome extension (presentation & page injection)
+│   └── extension/          # Production MV3 Chrome extension with React UI & local-first AI Explain
 ├── packages/
 │   ├── domain/             # Core TypeScript interfaces, schemas, and type definitions
 │   ├── rules-engine/       # Financial arithmetic (bigint) and rule evaluation conditions
@@ -31,9 +31,9 @@ payments-optimizer/
 │   ├── profile/            # User profile, preferences, and payment method managers
 │   └── test-fixtures/      # Standardized mock cards, offers, coupons, and spend states
 ├── tools/
-│   ├── benchmark/          # CLI test harness for strategy simulation & trace audits
-│   ├── build-data/         # Planned data compiler
-│   └── validate-data/      # Planned schema validation tools
+│   ├── benchmark/          # CLI test harness, latency performance metrics, and trace audits
+│   ├── build-data/         # Data compiler
+│   └── validate-data/      # Schema validation tools
 └── docs/                   # Architecture logs, ADRs, threat models, and design docs
 ```
 
@@ -49,6 +49,8 @@ payments-optimizer/
 ---
 
 ## Getting Started
+
+Refer to the [**Installation & Usage Guide (HOW_TO_RUN.md)**](file:///c:/Users/Lenovo%20Laptop/dev/payments-optimizer/HOW_TO_RUN.md) for step-by-step instructions on loading the compiled extension into Google Chrome, configuring wallet cards/custom valuations, setting up the local Gemini AI explanation overlays, and running interactive What-If simulations.
 
 ### Prerequisites
 
