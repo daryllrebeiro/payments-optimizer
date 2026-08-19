@@ -17,6 +17,56 @@ export default function Dashboard({ profile, recommendation }: DashboardProps) {
   const [simulatedBest, setSimulatedBest] = useState<SerializedStrategy | null>(null);
   const [activeMerchant, setActiveMerchant] = useState<string>('');
 
+  const [apiKey, setApiKey] = useState<string>('');
+  const [showExplainModal, setShowExplainModal] = useState(false);
+  const [explainLoading, setExplainLoading] = useState(false);
+  const [explanation, setExplanation] = useState('');
+  const [explainError, setExplainError] = useState('');
+
+  React.useEffect(() => {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(['geminiApiKey'], (result) => {
+        if (result.geminiApiKey) {
+          setApiKey(String(result.geminiApiKey));
+        }
+      });
+    }
+  }, []);
+
+  const handleExplainClick = async () => {
+    setShowExplainModal(true);
+    setExplainError('');
+    setExplanation('');
+
+    if (!apiKey) {
+      return;
+    }
+
+    setExplainLoading(true);
+    try {
+      if (!recommendation || !recommendation.bestStrategy) return;
+      const { generateAIExplanation } = await import('./ai-explain.js');
+      
+      const totalCost = Number(recommendation.cartTotal.amountMinor) / 100;
+      const currency = recommendation.cartTotal.currency;
+      
+      const text = await generateAIExplanation({
+        merchantId: recommendation.merchantId,
+        cartTotal: totalCost.toFixed(2),
+        currency,
+        bestStrategy: recommendation.bestStrategy,
+        alternatives: recommendation.strategies.slice(1, 4),
+      }, apiKey);
+      
+      setExplanation(text);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setExplainError(msg);
+    } finally {
+      setExplainLoading(false);
+    }
+  };
+
   // Setup simulator state from the active recommendation
   const openSimulator = () => {
     if (!recommendation) return;
@@ -86,7 +136,29 @@ export default function Dashboard({ profile, recommendation }: DashboardProps) {
       <div className="slide-in">
         <div className="glass-panel active-recommendation-panel" style={{ borderLeft: '4px solid var(--brand-primary)' }}>
           <div className="merchant-badge">{recommendation.merchantId}</div>
-          <h2 className="best-option-banner">🏆 Best Way to Pay</h2>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <h2 className="best-option-banner" style={{ margin: 0 }}>🏆 Best Way to Pay</h2>
+            <button
+              onClick={handleExplainClick}
+              style={{
+                padding: '3px 8px',
+                fontSize: '11px',
+                fontWeight: 600,
+                color: 'var(--brand-primary)',
+                background: 'var(--glass-bg)',
+                border: '1px solid var(--brand-primary)',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                transition: 'all 0.2s',
+              }}
+            >
+              💡 Why?
+            </button>
+          </div>
           
           {best ? (
             <>
@@ -163,6 +235,80 @@ export default function Dashboard({ profile, recommendation }: DashboardProps) {
         <button className="btn btn-primary" style={{ width: '100%' }} onClick={openSimulator}>
           Open What-If Simulator
         </button>
+
+        {showExplainModal && (
+          <div className="simulator-modal" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="glass-panel" style={{ width: '90%', maxWidth: '340px', padding: '16px', position: 'relative' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>💡</span> AI Optimizer Reason
+                </h3>
+                <button
+                  onClick={() => setShowExplainModal(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    fontSize: '18px',
+                    cursor: 'pointer',
+                    padding: 0,
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              {!apiKey ? (
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                  <p style={{ marginBottom: '10px' }}>
+                    Natural language explanations require a free Gemini API Key from Google AI Studio.
+                  </p>
+                  <ol style={{ paddingLeft: '20px', marginBottom: '15px' }}>
+                    <li style={{ marginBottom: '6px' }}>Go to <a href="https://aistudio.google.com/" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecoration: 'underline' }}>Google AI Studio</a> and click "Get API Key"</li>
+                    <li style={{ marginBottom: '6px' }}>Paste the key into the <strong>AI Explanation</strong> section of the Settings tab</li>
+                  </ol>
+                  <button
+                    className="btn btn-primary"
+                    style={{ width: '100%' }}
+                    onClick={() => setShowExplainModal(false)}
+                  >
+                    Got it
+                  </button>
+                </div>
+              ) : (
+                <div style={{ minHeight: '80px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  {explainLoading && (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '20px 0' }}>
+                      <div className="diagnostics-spinner" style={{ borderTopColor: 'var(--brand-primary)' }}></div>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Asking Gemini...</span>
+                    </div>
+                  )}
+
+                  {explainError && (
+                    <div style={{ color: 'var(--danger)', fontSize: '12px', lineHeight: '1.4', padding: '10px 0' }}>
+                      <strong>Error:</strong> {explainError}
+                    </div>
+                  )}
+
+                  {explanation && (
+                    <div style={{
+                      fontSize: '12px',
+                      color: 'var(--text-secondary)',
+                      lineHeight: '1.6',
+                      whiteSpace: 'pre-line',
+                      background: 'rgba(255, 255, 255, 0.02)',
+                      padding: '10px',
+                      borderRadius: '6px',
+                      border: '1px solid var(--glass-border)',
+                    }}>
+                      {explanation}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     );
   }

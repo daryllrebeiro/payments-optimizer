@@ -40,6 +40,25 @@ export default function Settings({ profile, onUpdateProfile }: SettingsProps) {
     onUpdateProfile(updated);
   };
 
+  const [apiKey, setApiKey] = React.useState('');
+
+  React.useEffect(() => {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(['geminiApiKey'], (result) => {
+        if (result.geminiApiKey) {
+          setApiKey(String(result.geminiApiKey));
+        }
+      });
+    }
+  }, []);
+
+  const handleUpdateApiKey = (key: string) => {
+    setApiKey(key);
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.set({ geminiApiKey: key });
+    }
+  };
+
   return (
     <div className="slide-in">
       <h2 className="section-title" style={{ fontSize: '15px', marginBottom: '10px' }}>Custom Point Valuations</h2>
@@ -118,7 +137,7 @@ export default function Settings({ profile, onUpdateProfile }: SettingsProps) {
           onChange={(e) => handleUpdatePreference('milestoneWeight', parseFloat(e.target.value))}
         />
       </div>
-      <div className="slider-group">
+      <div className="slider-group" style={{ marginBottom: '20px' }}>
         <div className="slider-header">
           <span>Workflow Simplicity</span>
           <span>{(profile.optimizationPreferences.simplicityWeight * 100).toFixed(0)}%</span>
@@ -131,6 +150,32 @@ export default function Settings({ profile, onUpdateProfile }: SettingsProps) {
           step="0.1"
           value={profile.optimizationPreferences.simplicityWeight}
           onChange={(e) => handleUpdatePreference('simplicityWeight', parseFloat(e.target.value))}
+        />
+      </div>
+
+      <h2 className="section-title" style={{ fontSize: '15px', marginBottom: '10px' }}>AI Explanation</h2>
+      <p className="section-desc" style={{ fontSize: '11px', marginBottom: '12px' }}>
+        Add your Google Gemini API Key to enable natural language explanations of recommendations.
+      </p>
+      <div className="glass-panel" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: '12px', fontWeight: 600 }}>Gemini API Key</span>
+          <a
+            href="https://aistudio.google.com/"
+            target="_blank"
+            rel="noreferrer"
+            style={{ fontSize: '10px', color: 'var(--accent)', textDecoration: 'none' }}
+          >
+            Get Free Key
+          </a>
+        </div>
+        <input
+          type="password"
+          className="form-input"
+          style={{ width: '100%', fontSize: '12px', boxSizing: 'border-box' }}
+          placeholder="AIzaSy..."
+          value={apiKey}
+          onChange={(e) => handleUpdateApiKey(e.target.value)}
         />
       </div>
     </div>
