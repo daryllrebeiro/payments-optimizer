@@ -1,0 +1,32 @@
+{
+  "name": "payments-optimizer-monorepo",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "PaymentsOptimizer: Privacy-first, local-first payment optimizer",
+  "scripts": {
+    "dev": "pnpm --filter @payments-optimizer/extension dev",
+    "build": "pnpm -r build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint .",
+    "format": "prettier --check .",
+    "format:write": "prettier --write .",
+    "typecheck": "pnpm -r typecheck",
+    "milestone1": "pnpm --filter benchmark-tool start"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.9.0",
+    "@types/node": "^20.14.9",
+    "eslint": "^9.9.0",
+    "fast-check": "^3.21.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.5.4",
+    "typescript-eslint": "^8.1.0",
+    "tsx": "^4.19.0",
+    "vitest": "^2.0.5",
+    "@vitest/coverage-v8": "^2.0.5",
+    "@playwright/test": "^1.46.0"
+  }
+}

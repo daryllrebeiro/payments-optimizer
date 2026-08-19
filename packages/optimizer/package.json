@@ -1,0 +1,18 @@
+{
+  "name": "@payments-optimizer/optimizer",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@payments-optimizer/domain": "workspace:*",
+    "@payments-optimizer/rules-engine": "workspace:*"
+  },
+  "devDependencies": {
+    "@payments-optimizer/test-fixtures": "workspace:*"
+  }
+}

@@ -1,0 +1,4 @@
+node_modules/
+**/dist/
+pnpm-lock.yaml
+PaymentsOptimizer_Production_Architecture_Plan.md
