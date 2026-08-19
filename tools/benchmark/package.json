@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "tsx cli.ts"
+    "start": "tsx cli.ts",
+    "perf": "tsx perf.ts"
   },
   "dependencies": {
     "@payments-optimizer/domain": "workspace:*",
