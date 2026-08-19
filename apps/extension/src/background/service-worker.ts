@@ -98,6 +98,22 @@ chrome.runtime.onMessage.addListener(
             },
           };
 
+          // Cache recommendation in session storage under the sender tab ID
+          if (_sender.tab?.id) {
+            await chrome.storage.session.set({
+              [`recommendation-${_sender.tab.id}`]: {
+                merchantId: cart.merchantId,
+                cartTotal: {
+                  amountMinor: cart.total.amountMinor.toString(),
+                  currency: cart.total.currency,
+                },
+                strategies: serialized,
+                bestStrategy: serialized[0] ?? null,
+                timestamp: Date.now(),
+              },
+            });
+          }
+
           sendResponse(response);
         } catch (err) {
           const errorResponse: OptimizePaymentErrorResponse = {

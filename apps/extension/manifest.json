@@ -3,7 +3,9 @@
   "name": "PaymentsOptimizer",
   "version": "0.5.0",
   "description": "Privacy-first, local-first payment optimizer. See exactly how to save the most on every online purchase.",
-  "action": {},
+  "action": {
+    "default_popup": "src/popup/popup.html"
+  },
   "background": {
     "service_worker": "background.js",
     "type": "module"

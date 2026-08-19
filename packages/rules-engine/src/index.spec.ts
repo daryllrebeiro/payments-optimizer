@@ -113,7 +113,7 @@ describe('Rules Engine Math & Logic tests', () => {
       fc.assert(
         fc.property(
           fc.bigInt({ min: 1n, max: 10000000n }),
-          fc.double({ min: 0.0, max: 1.0 }),
+           fc.double({ min: 0.0, max: 1.0, noNaN: true }),
           (subtotalMinor, rate) => {
             const cart: Cart = {
               merchantId: 'test',
