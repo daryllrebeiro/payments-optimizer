@@ -16,7 +16,7 @@ import {
   rankStrategies,
 } from '@payments-optimizer/optimizer';
 import type { UserProfile } from '@payments-optimizer/domain';
-import { PublicDataManager } from '@payments-optimizer/offer-engine';
+import { PublicDataManager, CartSchema } from '@payments-optimizer/offer-engine';
 import {
   hdfcMillenniaCard,
   sbiCashbackCard,
@@ -85,7 +85,9 @@ chrome.runtime.onMessage.addListener(
       // Return true to keep the message channel open for the async response.
       (async () => {
         try {
-          const cart = deserializeCart(msg.payload.cartJson);
+          const rawCart = deserializeCart(msg.payload.cartJson);
+          // Strict Zod validation of untrusted inputs from the page script context
+          const cart = CartSchema.parse(rawCart) as unknown as import('@payments-optimizer/domain').Cart;
 
           // Retrieve active tab profile, fallback to seeded default
           const localData = await chrome.storage.local.get('user-profile');

@@ -19,7 +19,7 @@
   ],
   "permissions": ["storage", "activeTab"],
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'"
+    "extension_pages": "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'"
   },
   "web_accessible_resources": []
 }

@@ -6,6 +6,8 @@ export const MoneySchema = z.object({
   amountMinor: z.union([z.number(), z.string(), z.bigint()]).transform((val) => {
     if (typeof val === 'bigint') return val;
     return BigInt(val);
+  }).refine((val) => val >= 0n, {
+    message: "Amount must be non-negative",
   }),
   currency: CurrencySchema,
 });
@@ -130,3 +132,29 @@ export const DatasetBundleSchema = z.object({
 });
 
 export type DatasetBundle = z.infer<typeof DatasetBundleSchema>;
+
+export const CartItemSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  price: MoneySchema,
+  quantity: z.number().int().positive(),
+  category: z.string().optional(),
+});
+
+export const CartSchema = z.object({
+  merchantId: z.string(),
+  items: z.array(CartItemSchema),
+  subtotal: MoneySchema,
+  discounts: z.array(
+    z.object({
+      id: z.string(),
+      code: z.string().optional(),
+      amount: MoneySchema,
+    })
+  ),
+  shipping: MoneySchema,
+  taxes: MoneySchema,
+  total: MoneySchema,
+  currency: CurrencySchema,
+});
+
