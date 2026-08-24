@@ -71,8 +71,7 @@ async function run(): Promise<void> {
 
   try {
     const response = (await chrome.runtime.sendMessage(message)) as
-      | OptimizePaymentResponse
-      | OptimizePaymentErrorResponse;
+      OptimizePaymentResponse | OptimizePaymentErrorResponse;
 
     if (response.type === 'OPTIMIZE_PAYMENT_ERROR') {
       console.warn('[PaymentsOptimizer] Optimization error:', response.error);

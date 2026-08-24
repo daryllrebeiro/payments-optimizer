@@ -10,11 +10,8 @@
  *  6. Cache recommendations by tabId in session storage and return serialised results
  */
 
-import {
-  generateCandidates,
-  filterDominated,
-  rankStrategies,
-} from '@payments-optimizer/optimizer';
+import { generateCandidates, filterDominated, rankStrategies } from '@payments-optimizer/optimizer';
+import { UnifiedBenefitOptimizer } from '@payments-optimizer/benefits';
 import type { UserProfile } from '@payments-optimizer/domain';
 import { PublicDataManager, CartSchema } from '@payments-optimizer/offer-engine';
 import {
@@ -87,7 +84,9 @@ chrome.runtime.onMessage.addListener(
         try {
           const rawCart = deserializeCart(msg.payload.cartJson);
           // Strict Zod validation of untrusted inputs from the page script context
-          const cart = CartSchema.parse(rawCart) as unknown as import('@payments-optimizer/domain').Cart;
+          const cart = CartSchema.parse(
+            rawCart
+          ) as unknown as import('@payments-optimizer/domain').Cart;
 
           // Retrieve active tab profile, fallback to seeded default
           const localData = await chrome.storage.local.get('user-profile');
@@ -97,8 +96,12 @@ chrome.runtime.onMessage.addListener(
           const offers = dataManager.getOffersForMerchant(cart.merchantId);
           const coupons = dataManager.getCouponsForMerchant(cart.merchantId);
 
-          const candidates = generateCandidates(cart, profile, offers, coupons);
-          const pruned = filterDominated(candidates);
+          const directCandidates = generateCandidates(cart, profile, offers, coupons);
+          const benefitOptimizer = new UnifiedBenefitOptimizer();
+          const benefitCandidates = benefitOptimizer.optimize(cart, profile, offers);
+
+          const allCandidates = [...benefitCandidates, ...directCandidates];
+          const pruned = filterDominated(allCandidates);
           const ranked = rankStrategies(pruned, profile.optimizationPreferences);
 
           const serialized = ranked.map(serializeStrategy);

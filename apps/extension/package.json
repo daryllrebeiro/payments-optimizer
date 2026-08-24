@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@payments-optimizer/benefits": "workspace:*",
     "@payments-optimizer/domain": "workspace:*",
     "@payments-optimizer/merchant-detector": "workspace:*",
     "@payments-optimizer/offer-engine": "workspace:*",

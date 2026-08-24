@@ -50,7 +50,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
   const [step, setStep] = useState(1);
   const [currency, setCurrency] = useState<Currency>('INR');
   const [selectedCards, setSelectedCards] = useState<string[]>(['hdfc-millennia', 'sbi-cashback']);
-  
+
   // Optimization preferences
   const [immediateSavingsWeight, setImmediateSavingsWeight] = useState(1.0);
   const [rewardValueWeight, setRewardValueWeight] = useState(1.0);
@@ -85,7 +85,10 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
         currency,
         paymentMethods,
         rewardPreferences: {
-          defaultValuations: defaultValuations as unknown as Record<string, import('@payments-optimizer/domain').Money>,
+          defaultValuations: defaultValuations as unknown as Record<
+            string,
+            import('@payments-optimizer/domain').Money
+          >,
         },
         optimizationPreferences: {
           immediateSavingsWeight,
@@ -145,7 +148,8 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
           <div className="slide-in">
             <h2 className="section-title">Configure Your Wallet</h2>
             <p className="section-desc">
-              Select the credit cards you currently own. We will check rewards rules for these cards.
+              Select the credit cards you currently own. We will check rewards rules for these
+              cards.
             </p>
             <div className="catalog-list">
               {CARD_CATALOG_TEMPLATES.map((tmpl) => {
@@ -172,7 +176,8 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
           <div className="slide-in">
             <h2 className="section-title">How do you want to optimize?</h2>
             <p className="section-desc">
-              Tune our weighted algorithm to prioritize immediate discount vs points value vs workflow simplicity.
+              Tune our weighted algorithm to prioritize immediate discount vs points value vs
+              workflow simplicity.
             </p>
             <div className="slider-group">
               <div className="slider-header">

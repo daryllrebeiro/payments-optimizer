@@ -67,7 +67,10 @@ export default function CardCatalogManager({ profile, onUpdateProfile }: CardCat
   const handleAddCard = (tmpl: CardTemplate) => {
     // Prevent duplicates
     const exists = profile.paymentMethods.some(
-      (m) => m.type === 'CREDIT_CARD' && tmpl.method.type === 'CREDIT_CARD' && m.card.id === tmpl.method.card.id
+      (m) =>
+        m.type === 'CREDIT_CARD' &&
+        tmpl.method.type === 'CREDIT_CARD' &&
+        m.card.id === tmpl.method.card.id
     );
     if (exists) {
       setShowCatalogModal(false);
@@ -85,7 +88,10 @@ export default function CardCatalogManager({ profile, onUpdateProfile }: CardCat
         ...profile.rewardPreferences,
         defaultValuations: {
           ...profile.rewardPreferences.defaultValuations,
-          [tmpl.rewardProgram]: { amountMinor: 100n, currency: profile.currency } as unknown as import('@payments-optimizer/domain').Money,
+          [tmpl.rewardProgram]: {
+            amountMinor: 100n,
+            currency: profile.currency,
+          } as unknown as import('@payments-optimizer/domain').Money,
         },
       };
     }
@@ -109,8 +115,14 @@ export default function CardCatalogManager({ profile, onUpdateProfile }: CardCat
               userState: {
                 ...m.card.userState,
                 isAvailable: true,
-                currentStatementSpend: m.card.userState?.currentStatementSpend ?? { amountMinor: 0n, currency: profile.currency },
-                monthlySpendToDate: m.card.userState?.monthlySpendToDate ?? { amountMinor: 0n, currency: profile.currency },
+                currentStatementSpend: m.card.userState?.currentStatementSpend ?? {
+                  amountMinor: 0n,
+                  currency: profile.currency,
+                },
+                monthlySpendToDate: m.card.userState?.monthlySpendToDate ?? {
+                  amountMinor: 0n,
+                  currency: profile.currency,
+                },
                 annualSpendToDate: {
                   amountMinor: BigInt(Math.round(numeric * 100)),
                   currency: profile.currency,
@@ -127,8 +139,17 @@ export default function CardCatalogManager({ profile, onUpdateProfile }: CardCat
 
   return (
     <div className="slide-in">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-        <h2 className="section-title" style={{ fontSize: '15px', marginBottom: '0' }}>Active Cards ({profile.paymentMethods.length})</h2>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '12px',
+        }}
+      >
+        <h2 className="section-title" style={{ fontSize: '15px', marginBottom: '0' }}>
+          Active Cards ({profile.paymentMethods.length})
+        </h2>
         <button
           className="btn btn-primary"
           style={{ padding: '6px 12px', fontSize: '11px', flex: 'none' }}
@@ -144,13 +165,26 @@ export default function CardCatalogManager({ profile, onUpdateProfile }: CardCat
           const card = m.card;
           const spend = Number(card.userState?.annualSpendToDate?.amountMinor || 0n) / 100;
           return (
-            <div key={idx} className="glass-panel" style={{ padding: '14px', position: 'relative' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+            <div
+              key={idx}
+              className="glass-panel"
+              style={{ padding: '14px', position: 'relative' }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: '8px',
+                }}
+              >
                 <div>
                   <h3 style={{ fontStyle: 'normal', fontWeight: 700, fontSize: '13px' }}>
                     {card.issuer} {card.productName}
                   </h3>
-                  <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{card.rewardProgram}</span>
+                  <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                    {card.rewardProgram}
+                  </span>
                 </div>
                 <button
                   style={{
@@ -168,7 +202,9 @@ export default function CardCatalogManager({ profile, onUpdateProfile }: CardCat
               </div>
 
               <div className="form-group" style={{ marginBottom: '0' }}>
-                <label className="form-label" style={{ fontSize: '10px', marginBottom: '4px' }}>Annual Spend Progress ({profile.currency})</label>
+                <label className="form-label" style={{ fontSize: '10px', marginBottom: '4px' }}>
+                  Annual Spend Progress ({profile.currency})
+                </label>
                 <input
                   type="text"
                   className="form-input"
@@ -187,7 +223,9 @@ export default function CardCatalogManager({ profile, onUpdateProfile }: CardCat
           <div className="glass-panel simulator-panel" style={{ maxHeight: '350px' }}>
             <div className="simulator-header">
               <h2 className="simulator-title">Card Registry Catalog</h2>
-              <button className="close-btn" onClick={() => setShowCatalogModal(false)}>×</button>
+              <button className="close-btn" onClick={() => setShowCatalogModal(false)}>
+                ×
+              </button>
             </div>
             <div className="catalog-list">
               {TEMPLATES.map((tmpl) => (
@@ -198,10 +236,18 @@ export default function CardCatalogManager({ profile, onUpdateProfile }: CardCat
                   onClick={() => handleAddCard(tmpl)}
                 >
                   <div className="card-info">
-                    <span className="card-title" style={{ fontSize: '12px' }}>{tmpl.name}</span>
-                    <span className="card-meta" style={{ fontSize: '10px' }}>{tmpl.rateDescription}</span>
+                    <span className="card-title" style={{ fontSize: '12px' }}>
+                      {tmpl.name}
+                    </span>
+                    <span className="card-meta" style={{ fontSize: '10px' }}>
+                      {tmpl.rateDescription}
+                    </span>
                   </div>
-                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>+ ADD</span>
+                  <span
+                    style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}
+                  >
+                    + ADD
+                  </span>
                 </div>
               ))}
             </div>

@@ -26,6 +26,18 @@ export interface SerializedMoney {
   currency: string;
 }
 
+export interface SerializedRecipeStep {
+  stepNumber: number;
+  phase: 'BEFORE_PAYMENT' | 'AT_PAYMENT' | 'POST_PAYMENT';
+  actionType: string;
+  benefitSourceName: string;
+  description: string;
+  amountApplied: SerializedMoney;
+  savingsGenerated: SerializedMoney;
+  instructions?: string;
+  codeToApply?: string;
+}
+
 export interface SerializedStrategy {
   id: string;
   immediateDiscount: SerializedMoney;
@@ -37,6 +49,10 @@ export interface SerializedStrategy {
   confidence: number;
   complexityScore: number;
   stepDescriptions: string[];
+  recipeSteps?: SerializedRecipeStep[];
+  voucherSavings?: SerializedMoney;
+  partnerSavings?: SerializedMoney;
+  cardSavings?: SerializedMoney;
 }
 
 export interface OptimizePaymentResponse {
@@ -49,9 +65,7 @@ export interface OptimizePaymentErrorResponse {
   error: string;
 }
 
-export type BackgroundToContentMessage =
-  | OptimizePaymentResponse
-  | OptimizePaymentErrorResponse;
+export type BackgroundToContentMessage = OptimizePaymentResponse | OptimizePaymentErrorResponse;
 
 // ── Serialization helpers ────────────────────────────────────────────────────
 
@@ -77,6 +91,22 @@ export function serializeStrategy(strategy: PaymentStrategy): SerializedStrategy
     currency: money.currency,
   });
 
+  const unified = strategy as Partial<
+    import('@payments-optimizer/domain').UnifiedTransactionStrategy
+  >;
+
+  const recipeSteps: SerializedRecipeStep[] | undefined = unified.recipeSteps?.map((step) => ({
+    stepNumber: step.stepNumber,
+    phase: step.phase,
+    actionType: step.actionType,
+    benefitSourceName: step.benefitSourceName,
+    description: step.description,
+    amountApplied: m(step.amountApplied),
+    savingsGenerated: m(step.savingsGenerated),
+    ...(step.instructions ? { instructions: step.instructions } : {}),
+    ...(step.codeToApply ? { codeToApply: step.codeToApply } : {}),
+  }));
+
   return {
     id: strategy.id,
     immediateDiscount: m(strategy.immediateDiscount),
@@ -88,6 +118,10 @@ export function serializeStrategy(strategy: PaymentStrategy): SerializedStrategy
     confidence: strategy.confidence,
     complexityScore: strategy.complexityScore,
     stepDescriptions: strategy.steps.map((s) => s.description),
+    ...(recipeSteps ? { recipeSteps } : {}),
+    ...(unified.voucherSavings ? { voucherSavings: m(unified.voucherSavings) } : {}),
+    ...(unified.partnerSavings ? { partnerSavings: m(unified.partnerSavings) } : {}),
+    ...(unified.cardSavings ? { cardSavings: m(unified.cardSavings) } : {}),
   };
 }
 

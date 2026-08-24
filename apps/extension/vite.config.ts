@@ -28,9 +28,9 @@ export default defineConfig({
     minify: false, // Keep readable for review; enable before Web Store submission
     rollupOptions: {
       input: {
-        'background': resolve(__dirname, 'src/background/service-worker.ts'),
+        background: resolve(__dirname, 'src/background/service-worker.ts'),
         'content-script': resolve(__dirname, 'src/content/content-script.ts'),
-        'popup': resolve(__dirname, 'src/popup/popup.html'),
+        popup: resolve(__dirname, 'src/popup/popup.html'),
       },
       output: {
         // Scripts output as entryName.js, but html outputs to its own path

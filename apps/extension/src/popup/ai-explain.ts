@@ -69,21 +69,21 @@ export async function generateAIExplanation(input: ExplainInput, apiKey: string)
     }),
   });
 
-interface GeminiErrorResponse {
-  error?: {
-    message?: string;
-  };
-}
-
-interface GeminiSuccessResponse {
-  candidates?: Array<{
-    content?: {
-      parts?: Array<{
-        text?: string;
-      }>;
+  interface GeminiErrorResponse {
+    error?: {
+      message?: string;
     };
-  }>;
-}
+  }
+
+  interface GeminiSuccessResponse {
+    candidates?: Array<{
+      content?: {
+        parts?: Array<{
+          text?: string;
+        }>;
+      };
+    }>;
+  }
 
   if (!response.ok) {
     const errorData = (await response.json().catch(() => ({}))) as GeminiErrorResponse;

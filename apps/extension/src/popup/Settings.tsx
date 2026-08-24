@@ -29,7 +29,10 @@ export default function Settings({ profile, onUpdateProfile }: SettingsProps) {
     onUpdateProfile(updated);
   };
 
-  const handleUpdatePreference = (key: keyof UserProfile['optimizationPreferences'], value: number) => {
+  const handleUpdatePreference = (
+    key: keyof UserProfile['optimizationPreferences'],
+    value: number
+  ) => {
     const updated = {
       ...profile,
       optimizationPreferences: {
@@ -61,9 +64,12 @@ export default function Settings({ profile, onUpdateProfile }: SettingsProps) {
 
   return (
     <div className="slide-in">
-      <h2 className="section-title" style={{ fontSize: '15px', marginBottom: '10px' }}>Custom Point Valuations</h2>
+      <h2 className="section-title" style={{ fontSize: '15px', marginBottom: '10px' }}>
+        Custom Point Valuations
+      </h2>
       <p className="section-desc" style={{ fontSize: '11px', marginBottom: '12px' }}>
-        Configure the monetary value of one unit/point in each program. For example, 1 point = ₹0.25 (enter 0.25).
+        Configure the monetary value of one unit/point in each program. For example, 1 point = ₹0.25
+        (enter 0.25).
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
@@ -71,7 +77,16 @@ export default function Settings({ profile, onUpdateProfile }: SettingsProps) {
           const valObj = valuations[programName];
           const value = valObj ? Number(valObj.amountMinor) / 100 : 1.0;
           return (
-            <div key={programName} className="glass-panel" style={{ padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div
+              key={programName}
+              className="glass-panel"
+              style={{
+                padding: '12px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
               <span style={{ fontSize: '12px', fontWeight: 600 }}>{programName}</span>
               <div style={{ width: '80px' }}>
                 <input
@@ -87,11 +102,15 @@ export default function Settings({ profile, onUpdateProfile }: SettingsProps) {
           );
         })}
         {Object.keys(valuations).length === 0 && (
-          <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>No reward programs configured. Add cards first.</div>
+          <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
+            No reward programs configured. Add cards first.
+          </div>
         )}
       </div>
 
-      <h2 className="section-title" style={{ fontSize: '15px', marginBottom: '10px' }}>Algorithm Weights</h2>
+      <h2 className="section-title" style={{ fontSize: '15px', marginBottom: '10px' }}>
+        Algorithm Weights
+      </h2>
       <div className="slider-group">
         <div className="slider-header">
           <span>Immediate Discount</span>
@@ -104,7 +123,9 @@ export default function Settings({ profile, onUpdateProfile }: SettingsProps) {
           max="1"
           step="0.1"
           value={profile.optimizationPreferences.immediateSavingsWeight}
-          onChange={(e) => handleUpdatePreference('immediateSavingsWeight', parseFloat(e.target.value))}
+          onChange={(e) =>
+            handleUpdatePreference('immediateSavingsWeight', parseFloat(e.target.value))
+          }
         />
       </div>
       <div className="slider-group">
@@ -153,11 +174,22 @@ export default function Settings({ profile, onUpdateProfile }: SettingsProps) {
         />
       </div>
 
-      <h2 className="section-title" style={{ fontSize: '15px', marginBottom: '10px' }}>AI Explanation</h2>
+      <h2 className="section-title" style={{ fontSize: '15px', marginBottom: '10px' }}>
+        AI Explanation
+      </h2>
       <p className="section-desc" style={{ fontSize: '11px', marginBottom: '12px' }}>
         Add your Google Gemini API Key to enable natural language explanations of recommendations.
       </p>
-      <div className="glass-panel" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
+      <div
+        className="glass-panel"
+        style={{
+          padding: '12px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+          marginBottom: '20px',
+        }}
+      >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: '12px', fontWeight: 600 }}>Gemini API Key</span>
           <a

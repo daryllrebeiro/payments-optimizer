@@ -29,16 +29,25 @@ export default function Diagnostics({ profile, activeTabId, onUpdateProfile }: D
       return;
     }
     try {
-      const importedProfile = await ProfileImportExport.importProfile(dataArea, passphrase || undefined);
+      const importedProfile = await ProfileImportExport.importProfile(
+        dataArea,
+        passphrase || undefined
+      );
       onUpdateProfile(importedProfile);
       setStatusMessage('Profile imported successfully!');
     } catch (err) {
-      setStatusMessage(`Import failed: Check data or passphrase. ${err instanceof Error ? err.message : String(err)}`);
+      setStatusMessage(
+        `Import failed: Check data or passphrase. ${err instanceof Error ? err.message : String(err)}`
+      );
     }
   };
 
   const handleReset = async () => {
-    if (window.confirm('Are you sure you want to reset your local database? All cards will be deleted.')) {
+    if (
+      window.confirm(
+        'Are you sure you want to reset your local database? All cards will be deleted.'
+      )
+    ) {
       try {
         await chrome.storage.local.clear();
         await chrome.storage.session.clear();
@@ -51,9 +60,21 @@ export default function Diagnostics({ profile, activeTabId, onUpdateProfile }: D
 
   return (
     <div className="slide-in" style={{ fontSize: '12px' }}>
-      <h2 className="section-title" style={{ fontSize: '15px', marginBottom: '8px' }}>System Diagnostics</h2>
-      
-      <div className="glass-panel" style={{ padding: '12px', marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '6px', color: 'var(--text-muted)' }}>
+      <h2 className="section-title" style={{ fontSize: '15px', marginBottom: '8px' }}>
+        System Diagnostics
+      </h2>
+
+      <div
+        className="glass-panel"
+        style={{
+          padding: '12px',
+          marginBottom: '16px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '6px',
+          color: 'var(--text-muted)',
+        }}
+      >
         <div style={{ display: 'flex', justifySelf: 'stretch', justifyContent: 'space-between' }}>
           <span>Database Engine</span>
           <span style={{ color: 'var(--text-primary)' }}>IndexedDB + Chrome Storage</span>
@@ -72,8 +93,10 @@ export default function Diagnostics({ profile, activeTabId, onUpdateProfile }: D
         </div>
       </div>
 
-      <h2 className="section-title" style={{ fontSize: '15px', marginBottom: '8px' }}>Vault Import / Export</h2>
-      
+      <h2 className="section-title" style={{ fontSize: '15px', marginBottom: '8px' }}>
+        Vault Import / Export
+      </h2>
+
       <div className="form-group" style={{ marginBottom: '10px' }}>
         <label className="form-label">Vault Passphrase (Optional for Encryption)</label>
         <input
@@ -98,7 +121,16 @@ export default function Diagnostics({ profile, activeTabId, onUpdateProfile }: D
       </div>
 
       {statusMessage && (
-        <div style={{ padding: '8px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '6px', marginBottom: '12px', fontSize: '11px', color: 'var(--brand-primary)' }}>
+        <div
+          style={{
+            padding: '8px',
+            background: 'rgba(255, 255, 255, 0.05)',
+            borderRadius: '6px',
+            marginBottom: '12px',
+            fontSize: '11px',
+            color: 'var(--brand-primary)',
+          }}
+        >
           {statusMessage}
         </div>
       )}
@@ -112,7 +144,11 @@ export default function Diagnostics({ profile, activeTabId, onUpdateProfile }: D
         </button>
       </div>
 
-      <button className="btn btn-secondary" style={{ width: '100%', borderColor: 'var(--danger)', color: 'var(--danger)' }} onClick={handleReset}>
+      <button
+        className="btn btn-secondary"
+        style={{ width: '100%', borderColor: 'var(--danger)', color: 'var(--danger)' }}
+        onClick={handleReset}
+      >
         Reset Storage
       </button>
     </div>

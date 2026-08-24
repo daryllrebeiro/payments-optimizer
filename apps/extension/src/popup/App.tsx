@@ -3,10 +3,11 @@ import type { UserProfile } from '@payments-optimizer/domain';
 import Onboarding from './Onboarding.js';
 import Dashboard from './Dashboard.js';
 import CardCatalogManager from './CardCatalogManager.js';
+import BenefitsManager from './BenefitsManager.js';
 import Settings from './Settings.js';
 import Diagnostics from './Diagnostics.js';
 
-export type ViewType = 'DASHBOARD' | 'CARDS' | 'SETTINGS' | 'DIAGNOSTICS';
+export type ViewType = 'DASHBOARD' | 'BENEFITS' | 'CARDS' | 'SETTINGS' | 'DIAGNOSTICS';
 
 export interface ActiveRecommendation {
   merchantId: string;
@@ -37,7 +38,9 @@ export default function App() {
   const [onboardingCompleted, setOnboardingCompleted] = useState(false);
   const [currentView, setCurrentView] = useState<ViewType>('DASHBOARD');
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
-  const [activeRecommendation, setActiveRecommendation] = useState<ActiveRecommendation | null>(null);
+  const [activeRecommendation, setActiveRecommendation] = useState<ActiveRecommendation | null>(
+    null
+  );
   const [activeTabId, setActiveTabId] = useState<number | null>(null);
 
   // Load initial settings and active tab recommendations
@@ -46,11 +49,11 @@ export default function App() {
       try {
         // 1. Check onboarding status from chrome.storage.local
         const localData = await chrome.storage.local.get(['onboarding-completed', 'user-profile']);
-        
+
         if (localData['onboarding-completed']) {
           setOnboardingCompleted(true);
         }
-        
+
         if (localData['user-profile']) {
           setProfile(localData['user-profile'] as UserProfile);
         } else {
@@ -107,8 +110,12 @@ export default function App() {
   if (!initialized) {
     return (
       <div className="app-container" style={{ justifyContent: 'center', alignItems: 'center' }}>
-        <div className="brand-title" style={{ fontSize: '24px', marginBottom: '8px' }}>PaymentsOptimizer</div>
-        <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Loading secure local vault...</div>
+        <div className="brand-title" style={{ fontSize: '24px', marginBottom: '8px' }}>
+          PaymentsOptimizer
+        </div>
+        <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
+          Loading secure local vault...
+        </div>
       </div>
     );
   }
@@ -142,6 +149,12 @@ export default function App() {
           DASHBOARD
         </button>
         <button
+          className={`nav-btn ${currentView === 'BENEFITS' ? 'active' : ''}`}
+          onClick={() => setCurrentView('BENEFITS')}
+        >
+          BENEFITS
+        </button>
+        <button
           className={`nav-btn ${currentView === 'CARDS' ? 'active' : ''}`}
           onClick={() => setCurrentView('CARDS')}
         >
@@ -163,22 +176,16 @@ export default function App() {
 
       <div className="main-content">
         {currentView === 'DASHBOARD' && (
-          <Dashboard
-            profile={profile}
-            recommendation={activeRecommendation}
-          />
+          <Dashboard profile={profile} recommendation={activeRecommendation} />
+        )}
+        {currentView === 'BENEFITS' && (
+          <BenefitsManager profile={profile} onUpdateProfile={handleUpdateProfile} />
         )}
         {currentView === 'CARDS' && (
-          <CardCatalogManager
-            profile={profile}
-            onUpdateProfile={handleUpdateProfile}
-          />
+          <CardCatalogManager profile={profile} onUpdateProfile={handleUpdateProfile} />
         )}
         {currentView === 'SETTINGS' && (
-          <Settings
-            profile={profile}
-            onUpdateProfile={handleUpdateProfile}
-          />
+          <Settings profile={profile} onUpdateProfile={handleUpdateProfile} />
         )}
         {currentView === 'DIAGNOSTICS' && (
           <Diagnostics
