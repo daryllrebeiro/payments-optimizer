@@ -1,4 +1,10 @@
-import { UserProfile, PaymentMethod, CreditCard } from '@payments-optimizer/domain';
+import {
+  UserProfile,
+  PaymentMethod,
+  CreditCard,
+  UserMembership,
+  UserVoucher,
+} from '@payments-optimizer/domain';
 import { StorageRepository } from '@payments-optimizer/storage';
 import { deriveKey, encrypt, decrypt } from '@payments-optimizer/security';
 
@@ -35,6 +41,60 @@ export class ProfileManager {
     if (!profile) throw new Error('No profile loaded');
     profile.paymentMethods.push(method);
     await this.saveProfile(profile);
+  }
+
+  async addMembership(membership: UserMembership): Promise<void> {
+    const profile = await this.getProfile();
+    if (!profile) throw new Error('No profile loaded');
+    profile.memberships = profile.memberships || [];
+    // Replace existing membership for same program if already present
+    profile.memberships = profile.memberships.filter((m) => m.programId !== membership.programId);
+    profile.memberships.push(membership);
+    await this.saveProfile(profile);
+  }
+
+  async removeMembership(programId: string): Promise<void> {
+    const profile = await this.getProfile();
+    if (!profile) throw new Error('No profile loaded');
+    if (profile.memberships) {
+      profile.memberships = profile.memberships.filter((m) => m.programId !== programId);
+      await this.saveProfile(profile);
+    }
+  }
+
+  async addVoucher(voucher: UserVoucher): Promise<void> {
+    const profile = await this.getProfile();
+    if (!profile) throw new Error('No profile loaded');
+    profile.vouchers = profile.vouchers || [];
+    profile.vouchers.push(voucher);
+    await this.saveProfile(profile);
+  }
+
+  async updateVoucher(voucher: UserVoucher): Promise<void> {
+    const profile = await this.getProfile();
+    if (!profile) throw new Error('No profile loaded');
+    profile.vouchers = (profile.vouchers || []).map((v) => (v.id === voucher.id ? voucher : v));
+    await this.saveProfile(profile);
+  }
+
+  async removeVoucher(voucherId: string): Promise<void> {
+    const profile = await this.getProfile();
+    if (!profile) throw new Error('No profile loaded');
+    if (profile.vouchers) {
+      profile.vouchers = profile.vouchers.filter((v) => v.id !== voucherId);
+      await this.saveProfile(profile);
+    }
+  }
+
+  async getExpiringVouchers(withinDays = 7): Promise<UserVoucher[]> {
+    const profile = await this.getProfile();
+    if (!profile || !profile.vouchers) return [];
+    const now = Date.now();
+    const thresholdMs = withinDays * 24 * 60 * 60 * 1000;
+    return profile.vouchers.filter((v) => {
+      const expiryMs = new Date(v.expiryDate).getTime();
+      return expiryMs > now && expiryMs - now <= thresholdMs && v.remainingValue.amountMinor > 0n;
+    });
   }
 
   async updateOptimizationPreferences(

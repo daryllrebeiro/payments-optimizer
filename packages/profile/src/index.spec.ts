@@ -48,6 +48,41 @@ describe('Profile Coordinator and Import/Export', () => {
       const updated = await manager.getProfile();
       expect(updated?.paymentMethods.length).toBe(1);
       expect(updated?.paymentMethods[0]?.type).toBe('CREDIT_CARD');
+
+      // Test Memberships
+      await manager.addMembership({
+        id: 'prime-1',
+        programId: 'amazon-prime',
+        programName: 'Amazon Prime',
+        tier: 'Prime',
+      });
+      const withMem = await manager.getProfile();
+      expect(withMem?.memberships?.length).toBe(1);
+      expect(withMem?.memberships?.[0]?.programName).toBe('Amazon Prime');
+
+      // Test Vouchers
+      const futureExpiry = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+      await manager.addVoucher({
+        id: 'voucher-myntra-500',
+        merchantId: 'myntra',
+        title: 'Myntra Gift Voucher ₹500',
+        initialValue: { amountMinor: 50000n, currency: 'INR' },
+        remainingValue: { amountMinor: 50000n, currency: 'INR' },
+        expiryDate: futureExpiry,
+        singleUse: false,
+      });
+
+      const withVoucher = await manager.getProfile();
+      expect(withVoucher?.vouchers?.length).toBe(1);
+      expect(withVoucher?.vouchers?.[0]?.title).toBe('Myntra Gift Voucher ₹500');
+
+      const expiring = await manager.getExpiringVouchers(7);
+      expect(expiring.length).toBe(1);
+      expect(expiring[0]?.id).toBe('voucher-myntra-500');
+
+      await manager.removeMembership('amazon-prime');
+      const afterRemoveMem = await manager.getProfile();
+      expect(afterRemoveMem?.memberships?.length).toBe(0);
     });
   });
 

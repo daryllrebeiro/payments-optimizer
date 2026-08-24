@@ -116,12 +116,98 @@ export interface OptimizationPreferences {
   milestoneWeight: Decimal;
   simplicityWeight: Decimal;
   riskWeight: Decimal;
+  urgencyWeight?: Decimal;
+}
+
+// Benefits & Membership Intelligence Types
+export type BenefitSourceType =
+  | 'MEMBERSHIP'
+  | 'SUBSCRIPTION'
+  | 'LOYALTY_PROGRAM'
+  | 'PARTNER_PROGRAM'
+  | 'STORED_VALUE'
+  | 'VOUCHER'
+  | 'COUPON'
+  | 'PAYMENT_METHOD'
+  | 'EMPLOYER_BENEFIT'
+  | 'PROMOTION';
+
+export type BenefitActionType =
+  | 'INSTANT_DISCOUNT'
+  | 'CASHBACK'
+  | 'REWARD_POINTS'
+  | 'VOUCHER_REDEMPTION'
+  | 'FREE_SHIPPING'
+  | 'PARTNER_RATE'
+  | 'UPGRADE'
+  | 'BONUS_POINTS'
+  | 'PARTNER_OFFER';
+
+export interface UserMembership {
+  id: string;
+  programId: string;
+  programName: string;
+  tier?: string | undefined;
+  membershipNumber?: string | undefined;
+  validUntil?: string | undefined; // ISO 8601 Date string
+  autoRenew?: boolean | undefined;
+}
+
+export interface UserVoucher {
+  id: string;
+  merchantId: string;
+  title: string;
+  code?: string | undefined;
+  initialValue: Money;
+  remainingValue: Money;
+  minimumSpend?: Money | undefined;
+  expiryDate: string; // ISO 8601 Date string
+  singleUse: boolean;
+  terms?: string | undefined;
+}
+
+export interface PartnerBenefit {
+  id: string;
+  programId: string;
+  merchantId: string;
+  partnerName: string;
+  title: string;
+  description?: string | undefined;
+  benefit: OfferBenefit;
+  conditions: RuleCondition[];
+  validUntil?: string | undefined;
+  stackableWithVouchers: boolean;
+  stackableWithCards: boolean;
+}
+
+export interface StrategyRecipeStep {
+  stepNumber: number;
+  phase: 'BEFORE_PAYMENT' | 'AT_PAYMENT' | 'POST_PAYMENT';
+  actionType: BenefitActionType;
+  benefitSourceId: string;
+  benefitSourceName: string;
+  description: string;
+  amountApplied: Money;
+  savingsGenerated: Money;
+  instructions?: string | undefined;
+  codeToApply?: string | undefined;
+}
+
+export interface UnifiedTransactionStrategy extends PaymentStrategy {
+  recipeSteps: StrategyRecipeStep[];
+  voucherSavings: Money;
+  partnerSavings: Money;
+  cardSavings: Money;
+  opportunityScore: number;
+  urgencyBonus: Money;
 }
 
 export interface UserProfile {
   version: number;
   currency: Currency;
   paymentMethods: PaymentMethod[];
+  memberships?: UserMembership[];
+  vouchers?: UserVoucher[];
   rewardPreferences: RewardPreferences;
   optimizationPreferences: OptimizationPreferences;
 }
