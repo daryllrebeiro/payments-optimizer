@@ -3,12 +3,15 @@ import { z } from 'zod';
 export const CurrencySchema = z.enum(['INR', 'USD', 'EUR', 'GBP', 'JPY', 'SGD', 'AED']);
 
 export const MoneySchema = z.object({
-  amountMinor: z.union([z.number(), z.string(), z.bigint()]).transform((val) => {
-    if (typeof val === 'bigint') return val;
-    return BigInt(val);
-  }).refine((val) => val >= 0n, {
-    message: "Amount must be non-negative",
-  }),
+  amountMinor: z
+    .union([z.number(), z.string(), z.bigint()])
+    .transform((val) => {
+      if (typeof val === 'bigint') return val;
+      return BigInt(val);
+    })
+    .refine((val) => val >= 0n, {
+      message: 'Amount must be non-negative',
+    }),
   currency: CurrencySchema,
 });
 
@@ -157,4 +160,3 @@ export const CartSchema = z.object({
   total: MoneySchema,
   currency: CurrencySchema,
 });
-

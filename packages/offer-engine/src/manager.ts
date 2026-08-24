@@ -38,12 +38,15 @@ export class PublicDataManager {
    * Query active, non-expired offers for a specific merchant.
    * Offers are filtered by date range: validFrom <= now <= validUntil.
    */
-  getOffersForMerchant(merchantId: string, referenceTime: string = new Date().toISOString()): Offer[] {
+  getOffersForMerchant(
+    merchantId: string,
+    referenceTime: string = new Date().toISOString()
+  ): Offer[] {
     if (!this.activeBundle) return [];
-    
+
     return (this.activeBundle.offers as unknown as Offer[]).filter((offer) => {
       if (offer.merchantId !== merchantId) return false;
-      
+
       // Active date check
       const validFromMs = Date.parse(offer.validFrom);
       const validUntilMs = Date.parse(offer.validUntil);
@@ -61,7 +64,10 @@ export class PublicDataManager {
    * Query active coupons for a merchant.
    * Filters out expired coupons (if validUntil is specified).
    */
-  getCouponsForMerchant(merchantId: string, referenceTime: string = new Date().toISOString()): Coupon[] {
+  getCouponsForMerchant(
+    merchantId: string,
+    referenceTime: string = new Date().toISOString()
+  ): Coupon[] {
     if (!this.activeBundle) return [];
 
     return (this.activeBundle.coupons as unknown as Coupon[]).filter((coupon) => {

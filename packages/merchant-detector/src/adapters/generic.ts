@@ -64,9 +64,7 @@ function extractFromOpenGraph(
     const siteName =
       doc.querySelector('meta[property="og:site_name"]')?.getAttribute('content') ?? null;
 
-    const merchantId = siteName
-      ? siteName.toLowerCase().replace(/[^a-z0-9]/g, '-')
-      : null;
+    const merchantId = siteName ? siteName.toLowerCase().replace(/[^a-z0-9]/g, '-') : null;
 
     const priceContent = doc
       .querySelector('meta[property="og:price:amount"]')

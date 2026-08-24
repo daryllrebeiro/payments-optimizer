@@ -34,9 +34,9 @@ function parseFlipkartDom(
     // Flipkart price selectors for product page and cart page
     const priceSelectors = [
       '._30jeq3._16Jk6d', // product page final price
-      '._30jeq3',         // general price
+      '._30jeq3', // general price
       '._3I9_wc._2p6lqe', // cart subtotal
-      '._2-ut7e',         // order total
+      '._2-ut7e', // order total
     ];
 
     let price: Money | null = null;

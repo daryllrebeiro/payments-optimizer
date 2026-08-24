@@ -2,13 +2,13 @@ import { PaymentStrategy } from '@payments-optimizer/domain';
 
 /**
  * Filter out dominated strategies.
- * 
+ *
  * Strategy A dominates B if:
  * 1. A's effectiveCost is equal or lower than B's.
  * 2. A's complexityScore is equal or lower than B's.
  * 3. A's confidence is equal or higher than B's.
  * AND A is strictly better than B in at least one of these three metrics.
- * 
+ *
  * Performance Optimization:
  * By sorting by effectiveCost ascending first, we can process strategies sequentially.
  * A strategy processed later (higher cost) can never dominate an already accepted strategy
@@ -67,7 +67,8 @@ export function filterDominated(strategies: PaymentStrategy[]): PaymentStrategy[
           const candidateDominates =
             candidate.complexityScore <= other.complexityScore &&
             candidate.confidence >= other.confidence &&
-            (candidate.complexityScore < other.complexityScore || candidate.confidence > other.confidence);
+            (candidate.complexityScore < other.complexityScore ||
+              candidate.confidence > other.confidence);
 
           if (candidateDominates) {
             result.splice(j, 1); // Remove dominated other

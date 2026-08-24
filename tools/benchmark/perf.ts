@@ -7,7 +7,7 @@ function generateMockStrategies(count: number, currency: Currency = 'INR'): Paym
 
   for (let i = 0; i < count; i++) {
     // Alternate metrics to create a mix of dominating and dominated options
-    const cost = BigInt(10000 + (i % 20) * 100); 
+    const cost = BigInt(10000 + (i % 20) * 100);
     const complexity = (i % 4) + 1;
     const confidence = 0.5 + (i % 5) * 0.1;
 
@@ -31,7 +31,7 @@ function generateMockStrategies(count: number, currency: Currency = 'INR'): Paym
 function runBenchmark() {
   const count = 300;
   const iterations = 100;
-  
+
   console.log('========================================================');
   console.log('PaymentsOptimizer --- Performance Benchmark Harness');
   console.log('========================================================');
@@ -40,15 +40,15 @@ function runBenchmark() {
   console.log(`Total initial candidates: ${candidates.length}\n`);
 
   console.log(`Running filterDominated over ${iterations} iterations...`);
-  
+
   const start = performance.now();
   let totalPrunedCount = 0;
-  
+
   for (let i = 0; i < iterations; i++) {
     const pruned = filterDominated(candidates);
     totalPrunedCount = pruned.length;
   }
-  
+
   const end = performance.now();
   const totalTime = end - start;
   const avgTime = totalTime / iterations;
