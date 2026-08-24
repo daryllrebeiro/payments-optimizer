@@ -7,9 +7,10 @@ This guide explains how to install, configure, and run the PaymentsOptimizer bro
 ## 1. Prerequisites
 
 Before starting, ensure you have the following installed on your machine:
-*   **Node.js**: Version 20 or higher
-*   **pnpm**: Version 10 or higher
-*   **Google Chrome** (or any Chromium-based browser like Brave or Edge)
+
+- **Node.js**: Version 20 or higher
+- **pnpm**: Version 10 or higher
+- **Google Chrome** (or any Chromium-based browser like Brave or Edge)
 
 ---
 
@@ -47,47 +48,57 @@ To load the unpacked extension in Chrome:
 
 ## 4. Basic Usage Flow
 
-### Step 1: Set Up Your Wallet Cards
+### Step 1: Set Up Your Benefits Wallet & Memberships
+
 1.  Click the extension icon in your Chrome toolbar to open the popup.
-2.  Switch to the **MY CARDS** tab.
-3.  Use the form to add your payment cards (e.g., card issuer, product name, network type, and annual spend to date).
-4.  Navigate to the **SETTINGS** tab to customize point valuations (e.g., 1 HDFC point = ₹0.25) or adjust the algorithm weights (Immediate Savings vs. Future Rewards vs. Workflow Simplicity).
+2.  Switch to the **BENEFITS** tab.
+3.  Under **MEMBERSHIPS**, link any active programs you belong to (e.g., _Amazon Prime, Accor ALL, Swiggy One, Marriott Bonvoy, Tata Neu_).
+4.  Under **VOUCHERS**, record any vouchers or coupons you possess (e.g., _Myntra ₹500 voucher with 3-day expiry_).
+5.  Review the **"WHAT DO I HAVE?"** overview for a summary of your active stored value and a **🔥 Expiring Soon** warning banner for benefits expiring within 7 days.
 
-### Step 2: Automatic Recommendations
-1.  Navigate to a supported online merchant (such as `https://www.amazon.in` or `https://www.flipkart.com`).
-2.  Add items to your shopping cart.
+### Step 2: Set Up Your Payment Cards
+
+1.  Switch to the **MY CARDS** tab.
+2.  Add your credit and debit cards (e.g., _SBI Cashback, HDFC Millennia, Axis Atlas_).
+3.  In the **VALUATIONS** (Settings) tab, customize your reward point valuations (e.g., _1 HDFC Point = ₹0.25_) and optimization weight preferences (Immediate Savings vs. Future Rewards vs. Expiry Urgency).
+
+### Step 3: Automatic Multi-Step Purchase Recommendations
+
+1.  Navigate to a supported online merchant (such as `https://www.myntra.com` or `https://www.amazon.in`).
+2.  Add items to your cart.
 3.  Open the **PaymentsOptimizer** extension popup.
-4.  The content script automatically extracts the current cart parameters securely, and the background engine instantly calculates the optimal routing strategy.
+4.  The background engine executes the **Benefits Intelligence & Unified Optimizer**, computing the optimal sequence:
+    - **Step 1**: Apply stored voucher (e.g., Myntra ₹500 voucher).
+    - **Step 2**: Activate partner promo (e.g., Accor ALL 10% member discount).
+    - **Step 3**: Pay remaining balance with the highest-earning card (e.g., SBI Cashback 5%).
+    - **Step 4**: Earn post-transaction reward points.
 5.  The popup displays:
-    *   The recommended payment route (e.g., HDFC Card + specific coupon).
-    *   Step-by-step instructions.
-    *   Immediate savings, reward values, and the final net effective cost.
-    *   Alternative card options ranked by value.
+    - **Recommended Sequence** with actionable instructions and coupon/voucher codes.
+    - **Savings breakdown** (Voucher savings + Partner perk + Card rewards).
+    - **Final net effective cost** and total savings.
 
-### Step 3: What-If Simulation
-1.  Click the **Open What-If Simulator** button in the popup.
-2.  Enter any hypothetical transaction amount.
-3.  Watch the recommendations adjust dynamically in real-time.
+### Step 4: What-If Simulator & AI Explanations
 
-### Step 4: AI Explanation Overlay
-1.  Click the **💡 Why?** button next to the recommended strategy banner.
-2.  If you haven't configured a Gemini key, follow the instructions to grab a free key from Google AI Studio.
-3.  Paste the key into the **AI Explanation** panel of the **SETTINGS** tab.
-4.  Click **💡 Why?** again to retrieve a natural language description explaining why the recommendation beats the other wallet cards.
+1.  Click the **Open What-If Simulator** button in the popup to simulate different purchase totals.
+2.  Click the **💡 Why?** button to view a natural language breakdown of why the recommended multi-step sequence outperforms direct card payments.
 
 ---
 
 ## 5. Development Diagnostics & Benchmarks
 
-From the project root directory, you can run the following diagnostic commands:
+From the project root directory, run any of the following diagnostic commands:
 
 ```bash
-# Run the complete test suite (includes service worker fuzz-testing)
+# Run the complete test suite across all 13 workspace projects
 pnpm run test
+
+# Run TypeScript dry-run checks
+pnpm run typecheck
 
 # Run the CLI transaction recommendation trace simulation
 pnpm run milestone1
 
-# Run the dominance pruner performance benchmark
-pnpm --filter benchmark-tool perf
+# Run the code linter and formatter validation
+pnpm run lint
+pnpm run format
 ```

@@ -1,16 +1,23 @@
 # PaymentsOptimizer
 
-PaymentsOptimizer is a **privacy-first, local-first personal payment optimization engine** that determines the absolute best way for an individual to pay for an online purchase.
+PaymentsOptimizer is a **privacy-first, local-first personal purchase and benefits optimization engine** that determines the absolute best sequence of instruments to use before, during, and after checkout for online purchases.
 
-By evaluating a user's local payment methods (credit cards, debit cards, wallets, UPI) against merchant offers, coupons, and complex reward structures (including milestone rules, spending caps, and point valuations), it outputs a list of ranked payment strategies with fully transparent, auditable calculation traces.
+Rather than only asking _"Which credit card should I use?"_, PaymentsOptimizer answers:
+
+> **"Given everything I have access to (memberships, partner affiliations, stored vouchers, coupons, loyalty points, cards, and payment methods), what is the optimal sequence of actions before, during, and after checkout to minimize cost and maximize value?"**
 
 ---
 
 ## Key Principles
 
-1. **Privacy-First & Local-First**: Sensitive personal profile data, credit card states, and transaction histories reside purely on the user's device (e.g., in local storage via IndexedDB). No financial data is sent to external servers.
-2. **Deterministic Calculations**: The rules engine is a strict, deterministic financial engine using high-precision integer math (using minor currency units via `bigint`) to avoid floating-point inaccuracies. AI is used only for natural language explanations, never for computing monetary values.
-3. **Transparent Auditing**: Every strategy contains a complete, step-by-step trace showing exactly how the final effective cost was calculated.
+1. **Privacy-First & Local-First**: Sensitive personal profile data, connected memberships, owned vouchers, credit card states, and transaction histories reside purely on the user's device (in encrypted local storage). No financial profile or wallet data is transmitted to external servers.
+2. **Deterministic Financial Core**: Rule evaluation, voucher burns, partner discounts, reward valuations, and stacking arithmetic execute on a strict deterministic financial engine using integer arithmetic (minor currency units via `bigint`). AI is used only for natural language explanations, never for computing monetary outcomes.
+3. **Benefits & Membership Intelligence**: Seamlessly synthesizes 4 distinct benefit tiers into an actionable, step-by-step checkout recipe:
+   - **A. Membership Inherent Perks**: Inherent member rates and shipping benefits (e.g., Amazon Prime, Swiggy One, Accor ALL, Marriott Bonvoy).
+   - **B. Partner Benefits**: Cross-brand value exchange discovered via a Directed Acyclic Graph (e.g., _Accor ALL membership $\to$ 10% instant discount at Myntra_).
+   - **C. Stored Value & Vouchers**: Stateful user-owned inventory tracking balances, partial/full burns, and expiration dates.
+   - **D. Promotional & Card Offers**: Merchant instant discounts, bank campaigns, and card reward point multipliers.
+4. **Transparent Calculation Traces**: Every strategy produces an auditable, step-by-step trace showing base price, voucher burns, partner discounts, card rewards, and final effective net cost.
 
 ---
 
@@ -21,15 +28,18 @@ This project is structured as a TypeScript monorepo using **pnpm workspaces**:
 ```
 payments-optimizer/
 ├── apps/
-│   └── extension/          # Production MV3 Chrome extension with React UI & local-first AI Explain
+│   └── extension/          # Production MV3 Chrome extension with React UI, Benefits Wallet & AI Explain
 ├── packages/
 │   ├── domain/             # Core TypeScript interfaces, schemas, and type definitions
+│   ├── benefits/           # Benefits & Membership Intelligence, BenefitGraph DAG, and Stacking Engine
 │   ├── rules-engine/       # Financial arithmetic (bigint) and rule evaluation conditions
-│   ├── optimizer/          # Strategy generator (direct / gift cards), pruner, and ranker
+│   ├── optimizer/          # Card strategy generator, Pareto dominance pruner, and ranker
+│   ├── offer-engine/       # Public data manager and Zod validation schemas
+│   ├── merchant-detector/  # URL/domain extraction and merchant resolver
 │   ├── security/           # Client-side encryption (AES-GCM) & key derivation (PBKDF2)
 │   ├── storage/            # Storage abstractions, migrator, IndexedDB & In-Memory repositories
-│   ├── profile/            # User profile, preferences, and payment method managers
-│   └── test-fixtures/      # Standardized mock cards, offers, coupons, and spend states
+│   ├── profile/            # User profile, memberships, vouchers, and card managers
+│   └── test-fixtures/      # Standardized mock cards, programs, offers, coupons, and carts
 ├── tools/
 │   ├── benchmark/          # CLI test harness, latency performance metrics, and trace audits
 │   ├── build-data/         # Data compiler
@@ -39,36 +49,47 @@ payments-optimizer/
 
 ### Core Workspace Packages
 
-- **[`@payments-optimizer/domain`](file:///c:/Users/Lenovo%20Laptop/dev/payments-optimizer/packages/domain)**: Houses the central data models (`Cart`, `UserProfile`, `CreditCard`, `Offer`, `Coupon`, `PaymentStrategy`).
-- **[`@payments-optimizer/rules-engine`](file:///c:/Users/Lenovo%20Laptop/dev/payments-optimizer/packages/rules-engine)**: Handles currency arithmetic (addition, subtraction, scaling) and eligibility checks (e.g., spend caps, category MCC rules).
-- **[`@payments-optimizer/optimizer`](file:///c:/Users/Lenovo%20Laptop/dev/payments-optimizer/packages/optimizer)**: Combines direct card benefits and gift card purchases/redemption options into potential candidates, filters dominated strategies (Pareto optimization), and scores options based on user preferences.
-- **[`@payments-optimizer/security`](file:///c:/Users/Lenovo%20Laptop/dev/payments-optimizer/packages/security)**: Protects stored user profiles by using native Web Crypto APIs to derive secure keys from passphrases and encrypt data locally.
-- **[`@payments-optimizer/storage`](file:///c:/Users/Lenovo%20Laptop/dev/payments-optimizer/packages/storage)**: Provides a generic repository interface with a complete migration-capable IndexedDB implementation for browser environments and an in-memory fallback for CLI or testing.
-- **[`@payments-optimizer/profile`](file:///c:/Users/Lenovo%20Laptop/dev/payments-optimizer/packages/profile)**: Coordinates saving, loading, and modifying user profiles, payment methods, and reward preference states.
+- **[`@payments-optimizer/benefits`](file:///c:/Users/Lenovo%20Laptop/dev/payments-optimizer/packages/benefits)**: Powers the Benefits & Membership Intelligence Subsystem. Contains the `BenefitGraph` DAG, `PublicBenefitCatalog`, `VoucherInventoryManager`, `BenefitEligibilityEngine`, `OpportunityScorer`, `BenefitStackingEngine`, and `UnifiedBenefitOptimizer`.
+- **[`@payments-optimizer/domain`](file:///c:/Users/Lenovo%20Laptop/dev/payments-optimizer/packages/domain)**: Central data models (`Cart`, `UserProfile`, `UserMembership`, `UserVoucher`, `PartnerBenefit`, `StrategyRecipeStep`, `UnifiedTransactionStrategy`).
+- **[`@payments-optimizer/rules-engine`](file:///c:/Users/Lenovo%20Laptop/dev/payments-optimizer/packages/rules-engine)**: Handles currency arithmetic (addition, subtraction, scaling) and deterministic eligibility evaluations.
+- **[`@payments-optimizer/optimizer`](file:///c:/Users/Lenovo%20Laptop/dev/payments-optimizer/packages/optimizer)**: Direct card candidate generation, Pareto dominance filtering, and multi-objective preference ranking.
+- **[`@payments-optimizer/profile`](file:///c:/Users/Lenovo%20Laptop/dev/payments-optimizer/packages/profile)**: Manages local user profile state, payment methods, active memberships, vouchers, and encrypted export/import.
+- **[`@payments-optimizer/security`](file:///c:/Users/Lenovo%20Laptop/dev/payments-optimizer/packages/security)**: Native Web Crypto AES-GCM encryption and PBKDF2 key derivation for local storage protection.
+- **[`@payments-optimizer/storage`](file:///c:/Users/Lenovo%20Laptop/dev/payments-optimizer/packages/storage)**: Generic repository interface with IndexedDB implementation and migration pipeline.
+
+---
+
+## Benefit Opportunity & Urgency Scoring
+
+The engine optimizes transactions against a multi-dimensional objective function:
+
+$$\text{OpportunityScore} = \text{ImmediateSavings} + \text{ValuatedRewards} + \text{UrgencyPremium} + \text{MembershipValue} - \text{OpportunityCost} - \text{ComplexityPenalty}$$
+
+- **ImmediateSavings**: Instant cash discounts and voucher burns ($₹$).
+- **ValuatedRewards**: Points and miles multiplied by user valuations.
+- **UrgencyPremium**: Prioritizes vouchers and coupons expiring within 24 hours, 3 days, or 7 days.
+- **OpportunityCost**: Heuristic penalty to prevent burning flexible, long-dated vouchers when high-value non-stackable partner promos are active.
+- **ComplexityPenalty**: Minor deduction for redemption friction.
 
 ---
 
 ## Getting Started
 
-Refer to the [**Installation & Usage Guide (HOW_TO_RUN.md)**](file:///c:/Users/Lenovo%20Laptop/dev/payments-optimizer/HOW_TO_RUN.md) for step-by-step instructions on loading the compiled extension into Google Chrome, configuring wallet cards/custom valuations, setting up the local Gemini AI explanation overlays, and running interactive What-If simulations.
+Refer to the [**Installation & Usage Guide (HOW_TO_RUN.md)**](file:///c:/Users/Lenovo%20Laptop/dev/payments-optimizer/HOW_TO_RUN.md) for step-by-step instructions on loading the compiled extension into Google Chrome, managing memberships and stored vouchers, configuring card valuations, and running simulations.
 
 ### Prerequisites
 
 - **Node.js**: Version 20 or higher
 - **pnpm**: Version 10 or higher
+- **Chromium-based Browser**: Chrome, Brave, Edge
 
 ### Installation & Build
 
-Install dependencies and compile all TypeScript workspaces:
-
 ```bash
-# Install all dependencies across workspaces
+# 1. Install all dependencies across workspaces
 pnpm install
 
-# Approve build scripts for required dependencies (like esbuild) if prompted
-pnpm approve-builds
-
-# Compile all TS workspace projects
+# 2. Compile all TypeScript packages and build extension
 pnpm run build
 ```
 
@@ -76,72 +97,19 @@ pnpm run build
 
 ## Development Workspace CLI Scripts
 
-All core development commands are managed from the root package script definitions:
-
-- `pnpm run build` — Compiles all packages in dependency-order.
-- `pnpm run typecheck` — Runs TypeScript compiler checks across all workspaces in dry-mode.
-- `pnpm run test` — Executes all unit and integration tests using **Vitest**.
-- `pnpm run test:watch` — Launches the Vitest test runner in watch mode.
-- `pnpm run test:coverage` — Runs tests and generates a code coverage report.
-- `pnpm run lint` — Standardizes repository code quality using **ESLint 9 Flat Config**.
+- `pnpm run build` — Compiles all packages in dependency order.
+- `pnpm run typecheck` — Runs TypeScript compiler dry-run checks across all workspaces.
+- `pnpm run test` — Executes all unit and integration test suites using **Vitest**.
+- `pnpm run test:watch` — Launches Vitest in interactive watch mode.
+- `pnpm run test:coverage` — Runs test suite and generates code coverage statistics.
+- `pnpm run lint` — Validates code formatting and rules using **ESLint 9 Flat Config**.
 - `pnpm run format` — Validates formatting compliance via **Prettier**.
-- `pnpm run format:write` — Automatically formats codebase in-place using **Prettier**.
+- `pnpm run format:write` — Auto-formats codebase in-place using **Prettier**.
 - `pnpm run milestone1` — Runs the CLI test harness (`benchmark-tool`) to simulate a purchase optimization trace.
-
----
-
-## Simulating the Optimization Engine (CLI Test Harness)
-
-To see the optimization engine in action, you can run the benchmark CLI tool:
-
-```bash
-pnpm run milestone1
-```
-
-This simulates an online purchase of **₹20,000** at Amazon using a user profile with three credit cards (HDFC Millennia, SBI Cashback, and Axis Atlas) and a ₹2,500 Amazon coupon.
-
-### Sample CLI Output
-
-```text
-========================================================
-PaymentsOptimizer --- First Milestone CLI Test Harness
-========================================================
-
-Merchant: AMAZON
-Purchase Amount: ₹20000
-
-Generated strategies: 14
-Pruned strategies (after dominance filtering): 4
-
-🏆 BEST STRATEGY RECOMMENDATION
---------------------------------------------------------
-Strategy ID: direct-hdfc-millennia-coupon-offer-3
-Effective Cost: ₹16500
-Immediate Savings: ₹2500
-Reward Value: ₹1000
-Future Milestone Value: ₹0
-Fees: ₹0
-Complexity Score: 2
-Confidence: 100%
-
-📋 PAYMENT STEPS
-  Step 1: [MERCHANT_PAYMENT] Pay remaining 17500.0 directly
-
-📊 CALCULATION TRACE AUDIT
---------------------------------------------------------
-  Base Price                         : +₹20000
-  Immediate Discounts & Coupons      : ₹-2500
-  Card Cashback / Rewards Value      : ₹-1000
---------------------------------------------------------
-  Final Effective Cost               :  ₹16500
-
-========================================================
-```
 
 ---
 
 ## Architecture Decision Records (ADRs)
 
-For deeper insight into foundational decisions, refer to:
-
 - [ADR-001: Repository Foundation](file:///c:/Users/Lenovo%20Laptop/dev/payments-optimizer/docs/architecture/ADR-001-Repository-Foundation.md)
+- [ADR-002: Benefits & Membership Intelligence Subsystem](file:///c:/Users/Lenovo%20Laptop/dev/payments-optimizer/docs/architecture/ADR-002-Benefits-Membership-Intelligence.md)
