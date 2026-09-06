@@ -17,7 +17,19 @@ export const dummyMoney: Money = {
 
 export * from './fixtures.js';
 
-// ── USD Fixtures ─────────────────────────────────────────────────────────────
+// ── Edge Cases ───────────────────────────────────────────────────────────────
+
+export * from './edge-cases.js';
+
+// ── EUR Fixtures ─────────────────────────────────────────────────────────────
+
+export * from './eur-fixtures.js';
+
+// ── GBP Fixtures ─────────────────────────────────────────────────────────────
+
+export * from './gbp-fixtures.js';
+
+// ── USD Fixtures (existing from previous) ────────────────────────────────────
 
 // Carts
 export const amazonCartUSD: Cart = {
