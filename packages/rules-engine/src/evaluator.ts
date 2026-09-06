@@ -10,6 +10,33 @@ import {
 } from '@payments-optimizer/domain';
 import { zeroMoney, multiplyMoney, minMoney } from './arithmetic.js';
 
+/**
+ * Checks if a cart meets all specified eligibility conditions for an offer or benefit.
+ * 
+ * Evaluates various rule conditions including:
+ * - MINIMUM_SPEND: Cart subtotal must meet minimum threshold
+ * - MERCHANT_ELIGIBILITY: Cart merchant must be in allowed list
+ * - MCC_ELIGIBILITY: Cart must contain items from allowed categories
+ * - EXPIRY: Offer must not be expired relative to context date
+ * 
+ * @param cart - Shopping cart to evaluate
+ * @param conditions - Array of rule conditions to check
+ * @param contextDate - Optional ISO date string for expiry checks (defaults to current time)
+ * @returns true if all conditions are met, false otherwise
+ * 
+ * @example
+ * ```typescript
+ * const conditions: RuleCondition[] = [
+ *   { type: 'MINIMUM_SPEND', value: { amountMinor: 5000n, currency: 'USD' } },
+ *   { type: 'MERCHANT_ELIGIBILITY', value: ['amazon', 'ebay'] }
+ * ];
+ * 
+ * const isEligible = checkEligibility(cart, conditions);
+ * if (isEligible) {
+ *   // Apply offer
+ * }
+ * ```
+ */
 export function checkEligibility(
   cart: Cart,
   conditions: RuleCondition[],
@@ -41,6 +68,33 @@ export function checkEligibility(
   return true;
 }
 
+/**
+ * Calculates the monetary value of a benefit applied to a cart.
+ * 
+ * Supports multiple benefit types:
+ * - PERCENTAGE_DISCOUNT: Percentage off cart subtotal with optional cap
+ * - FIXED_DISCOUNT: Fixed amount off (cannot exceed cart total)
+ * - CASHBACK: Percentage cashback on cart total with optional cap
+ * - POINTS: Points value calculated as percentage of cart total with optional cap
+ * 
+ * @param cart - Shopping cart to calculate benefit for
+ * @param benefit - Benefit definition with type, value, and optional cap
+ * @returns Monetary value of the benefit in cart's currency
+ * 
+ * @throws Error if benefit currency doesn't match cart currency
+ * 
+ * @example
+ * ```typescript
+ * const benefit: OfferBenefit = {
+ *   type: 'PERCENTAGE_DISCOUNT',
+ *   value: 0.10, // 10% off
+ *   cap: { amountMinor: 5000n, currency: 'USD' } // Max $50 off
+ * };
+ * 
+ * const savings = calculateBenefit(cart, benefit);
+ * console.log(`You save: $${savings.amountMinor / 100n}`);
+ * ```
+ */
 export function calculateBenefit(cart: Cart, benefit: OfferBenefit): Money {
   const currency = cart.currency;
   if (benefit.type === 'PERCENTAGE_DISCOUNT') {
