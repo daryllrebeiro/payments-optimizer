@@ -1,0 +1,158 @@
+/**
+ * Zod schemas for message validation
+ * Epic 1.3: Type-safe message passing with runtime validation
+ */
+
+import { z } from 'zod';
+
+/**
+ * Schema for Money type (serialized with string amountMinor)
+ */
+export const SerializedMoneySchema = z.object({
+  amountMinor: z.string().regex(/^-?\d+$/, 'amountMinor must be a valid integer string'),
+  currency: z.enum(['INR', 'USD', 'EUR', 'GBP']),
+});
+
+/**
+ * Schema for Cart items
+ */
+export const CartItemSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  price: SerializedMoneySchema,
+  quantity: z.number().int().positive(),
+  category: z.string(),
+});
+
+/**
+ * Schema for Cart
+ */
+export const CartSchema = z.object({
+  merchantId: z.string().min(1),
+  items: z.array(CartItemSchema).min(1),
+  subtotal: SerializedMoneySchema,
+  discounts: z.array(SerializedMoneySchema),
+  shipping: SerializedMoneySchema,
+  taxes: SerializedMoneySchema,
+  total: SerializedMoneySchema,
+  currency: z.enum(['INR', 'USD', 'EUR', 'GBP']),
+});
+
+export type SerializedCart = z.infer<typeof CartSchema>;
+
+/**
+ * Schema for recipe steps
+ */
+export const SerializedRecipeStepSchema = z.object({
+  stepNumber: z.number().int().positive(),
+  phase: z.enum(['BEFORE_PAYMENT', 'AT_PAYMENT', 'POST_PAYMENT']),
+  actionType: z.string(),
+  benefitSourceName: z.string(),
+  description: z.string(),
+  amountApplied: SerializedMoneySchema,
+  savingsGenerated: SerializedMoneySchema,
+  instructions: z.string().optional(),
+  codeToApply: z.string().optional(),
+});
+
+/**
+ * Schema for serialized strategy
+ */
+export const SerializedStrategySchema = z.object({
+  id: z.string(),
+  immediateDiscount: SerializedMoneySchema,
+  rewardValue: SerializedMoneySchema,
+  futureBenefit: SerializedMoneySchema,
+  fees: SerializedMoneySchema,
+  effectiveCost: SerializedMoneySchema,
+  totalBenefit: SerializedMoneySchema,
+  confidence: z.number().min(0).max(1),
+  complexityScore: z.number().min(0),
+  stepDescriptions: z.array(z.string()),
+  recipeSteps: z.array(SerializedRecipeStepSchema).optional(),
+  voucherSavings: SerializedMoneySchema.optional(),
+  partnerSavings: SerializedMoneySchema.optional(),
+  cardSavings: SerializedMoneySchema.optional(),
+});
+
+export type SerializedStrategy = z.infer<typeof SerializedStrategySchema>;
+
+/**
+ * Schema for OPTIMIZE_PAYMENT message payload
+ */
+export const OptimizePaymentPayloadSchema = z.object({
+  cartJson: z.string().min(1),
+});
+
+/**
+ * Schema for OPTIMIZE_PAYMENT message
+ */
+export const OptimizePaymentMessageSchema = z.object({
+  type: z.literal('OPTIMIZE_PAYMENT'),
+  payload: OptimizePaymentPayloadSchema,
+});
+
+export type OptimizePaymentMessage = z.infer<typeof OptimizePaymentMessageSchema>;
+
+/**
+ * Schema for optimization result
+ */
+export const OptimizationResultSchema = z.object({
+  strategies: z.array(SerializedStrategySchema),
+  bestStrategy: SerializedStrategySchema.nullable(),
+});
+
+/**
+ * Schema for OPTIMIZE_PAYMENT_RESULT response
+ */
+export const OptimizePaymentResponseSchema = z.object({
+  type: z.literal('OPTIMIZE_PAYMENT_RESULT'),
+  payload: OptimizationResultSchema,
+});
+
+export type OptimizePaymentResponse = z.infer<typeof OptimizePaymentResponseSchema>;
+
+/**
+ * Schema for error response
+ */
+export const OptimizePaymentErrorResponseSchema = z.object({
+  type: z.literal('OPTIMIZE_PAYMENT_ERROR'),
+  error: z.string(),
+});
+
+export type OptimizePaymentErrorResponse = z.infer<typeof OptimizePaymentErrorResponseSchema>;
+
+/**
+ * Union of all message types
+ */
+export const ContentToBackgroundMessageSchema = OptimizePaymentMessageSchema;
+export const BackgroundToContentMessageSchema = z.union([
+  OptimizePaymentResponseSchema,
+  OptimizePaymentErrorResponseSchema,
+]);
+
+export type ContentToBackgroundMessage = z.infer<typeof ContentToBackgroundMessageSchema>;
+export type BackgroundToContentMessage = z.infer<typeof BackgroundToContentMessageSchema>;
+
+/**
+ * Validation helpers
+ */
+export function validateOptimizePaymentMessage(message: unknown): OptimizePaymentMessage {
+  return OptimizePaymentMessageSchema.parse(message);
+}
+
+export function validateOptimizePaymentResponse(response: unknown): OptimizePaymentResponse {
+  return OptimizePaymentResponseSchema.parse(response);
+}
+
+export function validateOptimizePaymentErrorResponse(response: unknown): OptimizePaymentErrorResponse {
+  return OptimizePaymentErrorResponseSchema.parse(response);
+}
+
+export function validateCart(cart: unknown): SerializedCart {
+  return CartSchema.parse(cart);
+}
+
+export function validateStrategy(strategy: unknown): SerializedStrategy {
+  return SerializedStrategySchema.parse(strategy);
+}

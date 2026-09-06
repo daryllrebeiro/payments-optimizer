@@ -8,5 +8,7 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit"
   },
-  "dependencies": {}
+  "dependencies": {
+    "zod": "^3.22.4"
+  }
 }

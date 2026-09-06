@@ -6,6 +6,7 @@ import { BenchmarkHarness } from './benchmark-harness.js';
 import { createBenefitOptimizerBenchmarks } from './benefit-optimizer-bench.js';
 import { createRulesEngineBenchmarks } from './rules-engine-bench.js';
 import { createOfferEngineBenchmarks } from './offer-engine-bench.js';
+import { createStackingEngineBenchmarks } from './stacking-engine-bench.js';
 
 async function main() {
   const harness = new BenchmarkHarness();
@@ -17,6 +18,7 @@ async function main() {
     ...createBenefitOptimizerBenchmarks(),
     ...createRulesEngineBenchmarks(),
     ...createOfferEngineBenchmarks(),
+    ...createStackingEngineBenchmarks(),
   ];
 
   // Run each benchmark

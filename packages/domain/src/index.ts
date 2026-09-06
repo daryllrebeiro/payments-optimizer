@@ -469,3 +469,7 @@ export interface SavingsEntry {
   paymentMethodUsed?: PaymentMethod;
   benefitsApplied: BenefitApplication[];
 }
+
+// Serialization and Message Schemas
+export * from './serialization.js';
+export * from './message-schemas.js';

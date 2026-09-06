@@ -8,3 +8,4 @@ export { BenchmarkHarness, type BenchmarkResult, type BenchmarkOptions } from '.
 export { createBenefitOptimizerBenchmarks } from './benefit-optimizer-bench.js';
 export { createRulesEngineBenchmarks } from './rules-engine-bench.js';
 export { createOfferEngineBenchmarks } from './offer-engine-bench.js';
+export { createStackingEngineBenchmarks } from './stacking-engine-bench.js';
