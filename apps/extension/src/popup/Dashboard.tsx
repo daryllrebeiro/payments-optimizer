@@ -192,6 +192,7 @@ export default function Dashboard({ profile, recommendation }: DashboardProps) {
             </h2>
             <button
               onClick={handleExplainClick}
+              aria-label="Explain why this is the best payment strategy"
               style={{
                 padding: '3px 8px',
                 fontSize: '11px',

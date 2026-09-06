@@ -8,6 +8,7 @@ import Settings from './Settings.js';
 import Diagnostics from './Diagnostics.js';
 import SavingsSummary from './SavingsSummary.js';
 import SavingsHistory from './SavingsHistory.js';
+import { announce } from './accessibility.js';
 
 export type ViewType = 'DASHBOARD' | 'BENEFITS' | 'CARDS' | 'SETTINGS' | 'DIAGNOSTICS' | 'SAVINGS';
 
@@ -302,8 +303,11 @@ export default function App() {
       <button
         key={view}
         className={`nav-btn ${currentView === view ? 'active' : ''}`}
-        onClick={() => setCurrentView(view)}
-        aria-label={`Navigate to ${view}`}
+        onClick={() => {
+          setCurrentView(view);
+          announce(`Navigated to ${view.toLowerCase()} view`);
+        }}
+        aria-label={`Navigate to ${view.toLowerCase()}`}
         aria-current={currentView === view ? 'page' : undefined}
       >
         {view}
@@ -339,11 +343,26 @@ export default function App() {
 
   return (
     <div className="app-container" role="application" aria-label="PaymentsOptimizer">
+      {/* Screen reader announcements */}
+      <div
+        id="sr-announcer"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        style={{
+          position: 'absolute',
+          left: '-10000px',
+          width: '1px',
+          height: '1px',
+          overflow: 'hidden',
+        }}
+      />
+      
       <header className="header" role="banner">
-        <div className="brand-title" role="heading" aria-level="1">
+        <div className="brand-title" role="heading" aria-level={1}>
           PaymentsOptimizer
         </div>
-        <div className="header-meta">v0.5.0</div>
+        <div className="header-meta" aria-label="Version 0.5.0">v0.5.0</div>
       </header>
 
       <nav className="nav-bar" role="navigation" aria-label="Main navigation">
