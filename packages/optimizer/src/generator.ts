@@ -22,6 +22,10 @@ import {
   calculatePaymentFees,
 } from '@payments-optimizer/rules-engine';
 
+// Early pruning constraints to limit candidate generation
+const MAX_COUPONS = 2;
+const MAX_OFFERS = 2;
+
 function valueReward(
   reward: Money,
   rewardProgram: string,
@@ -56,6 +60,9 @@ export function generateCandidates(
     (coupon) => coupon.merchantId === cart.merchantId && checkEligibility(cart, coupon.conditions)
   );
 
+  // Limit coupons for early pruning
+  const limitedCoupons = eligibleCoupons.slice(0, MAX_COUPONS);
+
   // Generate strategies for each payment method in the profile
   for (const method of profile.paymentMethods) {
     const methodId =
@@ -66,7 +73,7 @@ export function generateCandidates(
           : method.type;
 
     // 1. DIRECT PAYMENT STRATEGIES (with and without coupons)
-    const couponOptions = [null, ...eligibleCoupons];
+    const couponOptions = [null, ...limitedCoupons];
 
     for (const coupon of couponOptions) {
       let couponDiscount = zeroMoney(currency);
@@ -107,7 +114,9 @@ export function generateCandidates(
         return checkEligibility(cartAfterCoupon, offer.conditions);
       });
 
-      const offerOptions = [null, ...methodOffers];
+      // Limit offers for early pruning
+      const limitedOffers = methodOffers.slice(0, MAX_OFFERS);
+      const offerOptions = [null, ...limitedOffers];
 
       for (const offer of offerOptions) {
         let offerDiscount = zeroMoney(currency);

@@ -8,13 +8,83 @@ interface ExplainInput {
   alternatives: SerializedStrategy[];
 }
 
+// Rate limiting constants
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 10;
+
+/**
+ * Validates that the API key is in a valid format for Gemini API
+ * @param apiKey - The API key to validate
+ * @returns true if the key appears valid, false otherwise
+ */
+export function isValidApiKey(apiKey: string): boolean {
+  // Gemini API keys start with "AIza" and are 35 characters long
+  const apiKeyPattern = /^AIza[A-Za-z0-9_-]{35}$/;
+  return apiKeyPattern.test(apiKey.trim());
+}
+
+/**
+ * Checks if the rate limit has been exceeded for AI API calls
+ * @returns true if under the limit, false if rate limited
+ */
+function isRateLimited(): boolean {
+  if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
+    return false;
+  }
+
+  const now = Date.now();
+  
+  return new Promise<boolean>((resolve) => {
+    chrome.storage.local.get(['aiRateLimit'], (result) => {
+      const rateLimitData = result.aiRateLimit as {
+        count: number;
+        windowStart: number;
+      } | undefined;
+
+      if (!rateLimitData || now - rateLimitData.windowStart > RATE_LIMIT_WINDOW_MS) {
+        // Window expired, reset
+        chrome.storage.local.set({
+          aiRateLimit: {
+            count: 1,
+            windowStart: now,
+          },
+        });
+        resolve(false); // Not limited (new window)
+      } else if (rateLimitData.count >= RATE_LIMIT_MAX_REQUESTS) {
+        resolve(true); // Limited
+      } else {
+        // Increment counter
+        chrome.storage.local.set({
+          aiRateLimit: {
+            count: rateLimitData.count + 1,
+            windowStart: rateLimitData.windowStart,
+          },
+        });
+        resolve(false); // Not limited (under limit)
+      }
+    });
+  });
+}
+
 /**
  * Generate a natural language explanation of the payment optimization strategy
  * utilizing the Gemini API directly from the client.
  */
 export async function generateAIExplanation(input: ExplainInput, apiKey: string): Promise<string> {
-  if (!apiKey.trim()) {
+  const trimmedKey = apiKey.trim();
+
+  // Validate API key format
+  if (!trimmedKey) {
     throw new Error('API Key is missing.');
+  }
+  
+  if (!isValidApiKey(trimmedKey)) {
+    throw new Error('Invalid API Key format. Please check that you entered a valid Gemini API key.');
+  }
+
+  // Check rate limit
+  if (await isRateLimited()) {
+    throw new Error(`Rate limit exceeded. Maximum ${RATE_LIMIT_MAX_REQUESTS} requests per minute.`);
   }
 
   const { merchantId, cartTotal, currency, bestStrategy, alternatives } = input;

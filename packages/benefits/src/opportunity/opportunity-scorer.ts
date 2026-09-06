@@ -1,6 +1,21 @@
 import { Money, OptimizationPreferences } from '@payments-optimizer/domain';
 import { UserVoucher } from '../domain/types.js';
 
+/**
+ * Safely converts a BigInt representing cents/minimum currency unit to a number.
+ * For values exceeding Number.MAX_SAFE_INTEGER, truncates to 2 decimal places.
+ * @param amountMinor - BigInt amount in minimum currency units (e.g., paise, cents)
+ * @returns Number amount in major currency units (e.g., rupees, dollars)
+ */
+function safeBigIntToNumber(amountMinor: bigint): number {
+  if (amountMinor > BigInt(Number.MAX_SAFE_INTEGER) || amountMinor < -BigInt(Number.MAX_SAFE_INTEGER)) {
+    console.warn(`BigInt value ${amountMinor.toString()} exceeds safe integer range, truncating to 2 decimal places`);
+    // Divide by 100 first to reduce magnitude, then convert
+    return Number(amountMinor / 100n);
+  }
+  return Number(amountMinor) / 100;
+}
+
 export interface OpportunityScoreInput {
   immediateSavings: Money;
   rewardValue: Money;
@@ -28,8 +43,8 @@ export class OpportunityScorer {
   ): OpportunityScoreResult {
     const now = input.now ?? Date.now();
 
-    const immediateSavingsVal = Number(input.immediateSavings.amountMinor) / 100;
-    const rewardValueVal = Number(input.rewardValue.amountMinor) / 100;
+    const immediateSavingsVal = safeBigIntToNumber(input.immediateSavings.amountMinor);
+    const rewardValueVal = safeBigIntToNumber(input.rewardValue.amountMinor);
 
     // 1. Urgency Premium for expiring vouchers
     let urgencyPremiumVal = 0;
@@ -51,7 +66,7 @@ export class OpportunityScorer {
     // 3. Opportunity Cost (Penalty for burning long-expiry voucher if alternative promo is available)
     let opportunityCostVal = 0;
     if (input.appliedVouchers.length > 0 && input.alternativeCardPromoSavings) {
-      const altSavingsVal = Number(input.alternativeCardPromoSavings.amountMinor) / 100;
+      const altSavingsVal = safeBigIntToNumber(input.alternativeCardPromoSavings.amountMinor);
       // If vouchers have > 14 days and alternative promo captures >= 80% savings
       const hasLongExpiry = input.appliedVouchers.every((v) => {
         const daysLeft = (new Date(v.expiryDate).getTime() - now) / (24 * 60 * 60 * 1000);

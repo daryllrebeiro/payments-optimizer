@@ -17,11 +17,27 @@ const chromeMock = {
   },
   storage: {
     local: {
-      get: vi.fn().mockImplementation(() => Promise.resolve({})),
-      set: vi.fn().mockImplementation(() => Promise.resolve()),
+      get: vi.fn().mockImplementation((keys: string | string[], callback?: (result: any) => void) => {
+        if (callback) {
+          // Chrome API callback style
+          callback({});
+        }
+        return Promise.resolve({});
+      }),
+      set: vi.fn().mockImplementation((data: any, callback?: () => void) => {
+        if (callback) {
+          callback();
+        }
+        return Promise.resolve();
+      }),
     },
     session: {
-      set: vi.fn().mockImplementation(() => Promise.resolve()),
+      set: vi.fn().mockImplementation((data: any, callback?: () => void) => {
+        if (callback) {
+          callback();
+        }
+        return Promise.resolve();
+      }),
     },
   },
 };
@@ -32,12 +48,17 @@ globalThis.chrome = chromeMock as any;
 await import('./service-worker.js');
 
 describe('Service Worker Boundary Security Fuzzing', () => {
+  beforeAll(() => {
+    // Ensure the mock is set up before all tests
+    vi.clearAllMocks();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   const sendOptimisationMessage = (payloadJson: string): Promise<any> => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const msg = {
         type: 'OPTIMIZE_PAYMENT',
         payload: {
@@ -47,11 +68,15 @@ describe('Service Worker Boundary Security Fuzzing', () => {
 
       const sender = { tab: { id: 123 } };
 
-      const keepOpen = registeredListener(msg, sender, (response: any) => {
-        resolve(response);
-      });
+      try {
+        const keepOpen = registeredListener(msg, sender, (response: any) => {
+          resolve(response);
+        });
 
-      expect(keepOpen).toBe(true);
+        expect(keepOpen).toBe(true);
+      } catch (err) {
+        reject(err);
+      }
     });
   };
 

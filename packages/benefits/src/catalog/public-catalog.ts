@@ -1,12 +1,58 @@
 import { BenefitProgram, PartnerBenefit } from '../domain/types.js';
 import { BenefitGraph } from '../graph/benefit-graph.js';
 
+/**
+ * Memoization cache key for getBenefitsForMerchant
+ */
+type MemoKey = `${string}:${string}`;
+
+/**
+ * Memoization cache entry
+ */
+interface MemoEntry {
+  timestamp: number;
+  benefits: PartnerBenefit[];
+}
+
+// Cache TTL: 5 minutes
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
 export class PublicBenefitCatalog {
   private programs = new Map<string, BenefitProgram>();
   private graph = new BenefitGraph();
+  private memoCache = new Map<MemoKey, MemoEntry>();
 
   constructor() {
     this.initializeDefaultCatalog();
+  }
+
+  /**
+   * Clears the memoization cache
+   */
+  clearCache(): void {
+    this.memoCache.clear();
+  }
+
+  /**
+   * Gets cached benefits or computes and caches them
+   */
+  private getCachedBenefits(
+    merchantId: string,
+    userProgramIds: string[]
+  ): PartnerBenefit[] {
+    const key: MemoKey = `${merchantId}:${userProgramIds.sort().join(',')}`;
+    const now = Date.now();
+
+    const cached = this.memoCache.get(key);
+    if (cached && now - cached.timestamp < CACHE_TTL_MS) {
+      return cached.benefits;
+    }
+
+    const benefits = this.graph.getMerchantBenefitsForPrograms(merchantId, userProgramIds).map(
+      (h) => h.benefit
+    );
+    this.memoCache.set(key, { timestamp: now, benefits });
+    return benefits;
   }
 
   registerProgram(program: BenefitProgram): void {
@@ -54,8 +100,7 @@ export class PublicBenefitCatalog {
   }
 
   getBenefitsForMerchant(merchantId: string, userProgramIds: string[]): PartnerBenefit[] {
-    const hits = this.graph.getMerchantBenefitsForPrograms(merchantId, userProgramIds);
-    return hits.map((h) => h.benefit);
+    return this.getCachedBenefits(merchantId, userProgramIds);
   }
 
   private initializeDefaultCatalog(): void {

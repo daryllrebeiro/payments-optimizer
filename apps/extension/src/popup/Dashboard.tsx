@@ -4,6 +4,7 @@ import { generateCandidates, filterDominated, rankStrategies } from '@payments-o
 import { hdfcInstantDiscountOffer, amazonCoupon } from '@payments-optimizer/test-fixtures';
 import type { ActiveRecommendation } from './App.js';
 import { serializeStrategy, SerializedStrategy } from '../types/messages.js';
+import { LoadingState } from './LoadingState.js';
 
 interface DashboardProps {
   profile: UserProfile;
@@ -42,6 +43,17 @@ export default function Dashboard({ profile, recommendation }: DashboardProps) {
       return;
     }
 
+    // Validate API key format before attempting to use it
+    try {
+      const { isValidApiKey } = await import('./ai-explain.js');
+      if (!isValidApiKey(apiKey)) {
+        setExplainError('Invalid API Key format. Please check that you entered a valid Gemini API key.');
+        return;
+      }
+    } catch (err) {
+      // If import fails, continue and let the actual call handle it
+    }
+
     setExplainLoading(true);
     try {
       if (!recommendation || !recommendation.bestStrategy) return;
@@ -68,6 +80,29 @@ export default function Dashboard({ profile, recommendation }: DashboardProps) {
     } finally {
       setExplainLoading(false);
     }
+  };
+
+  const handleExportStrategy = () => {
+    if (!recommendation || !recommendation.bestStrategy) return;
+
+    const exportData = {
+      exportDate: new Date().toISOString(),
+      merchantId: recommendation.merchantId,
+      cartTotal: recommendation.cartTotal,
+      strategies: recommendation.strategies,
+      bestStrategy: recommendation.bestStrategy,
+    };
+
+    const json = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `payments-optimizer-${recommendation.merchantId}-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   // Setup simulator state from the active recommendation
@@ -336,9 +371,18 @@ export default function Dashboard({ profile, recommendation }: DashboardProps) {
           </div>
         )}
 
-        <button className="btn btn-primary" style={{ width: '100%' }} onClick={openSimulator}>
-          Open What-If Simulator
-        </button>
+        <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+          <button className="btn btn-primary" style={{ flex: 1 }} onClick={openSimulator}>
+            Open What-If Simulator
+          </button>
+          <button
+            className="btn btn-secondary"
+            style={{ flex: 1 }}
+            onClick={handleExportStrategy}
+          >
+            💾 Export Strategy
+          </button>
+        </div>
 
         {showExplainModal && (
           <div

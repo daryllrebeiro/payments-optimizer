@@ -6,6 +6,10 @@ import {
   Cart,
 } from '@payments-optimizer/domain';
 
+// Strategy ranking constraints
+const MIN_CONFIDENCE = 0.5;
+const MAX_COMPLEXITY = 8;
+
 export function scoreStrategy(strategy: PaymentStrategy, prefs: OptimizationPreferences): number {
   // Convert minor currency units to major double units for scoring
   const savingsVal = Number(strategy.immediateDiscount.amountMinor) / 100;
@@ -31,7 +35,12 @@ export function rankStrategies(
   strategies: PaymentStrategy[],
   prefs: OptimizationPreferences
 ): PaymentStrategy[] {
-  return [...strategies].sort((a, b) => {
+  // Filter out strategies that don't meet minimum constraints
+  const filtered = strategies.filter(
+    (s) => s.confidence >= MIN_CONFIDENCE && s.complexityScore <= MAX_COMPLEXITY
+  );
+
+  return filtered.sort((a, b) => {
     const scoreA = scoreStrategy(a, prefs);
     const scoreB = scoreStrategy(b, prefs);
     return scoreB - scoreA; // descending order

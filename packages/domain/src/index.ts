@@ -1,8 +1,63 @@
+// Branded types for currency safety
+export type InrMinor = bigint & { __brand: 'InrMinor' };
+export type InrMajor = number & { __brand: 'InrMajor' };
+export type UsdMinor = bigint & { __brand: 'UsdMinor' };
+export type UsdMajor = number & { __brand: 'UsdMajor' };
+
+/**
+ * Converts INR amount in major units (rupees) to minor units (paise)
+ */
+export function inrToMinor(amount: number): InrMinor {
+  return BigInt(Math.round(amount * 100)) as InrMinor;
+}
+
+/**
+ * Converts INR amount in minor units (paise) to major units (rupees)
+ */
+export function inrToMajor(amount: InrMinor | bigint): InrMajor {
+  return Number(amount) / 100 as InrMajor;
+}
+
+/**
+ * Converts USD amount in major units (dollars) to minor units (cents)
+ */
+export function usdToMinor(amount: number): UsdMinor {
+  return BigInt(Math.round(amount * 100)) as UsdMinor;
+}
+
+/**
+ * Converts USD amount in minor units (cents) to major units (dollars)
+ */
+export function usdToMajor(amount: UsdMinor | bigint): UsdMajor {
+  return Number(amount) / 100 as UsdMajor;
+}
+
 // Core Types
 export type Currency = 'INR' | 'USD' | 'EUR' | 'GBP' | 'JPY' | 'SGD' | 'AED';
 export type CardNetwork = 'VISA' | 'MASTERCARD' | 'AMEX' | 'RUPAY' | 'DINERS';
 export type RewardType = 'CASHBACK' | 'POINTS' | 'MILES' | 'HOTEL_POINTS' | 'VOUCHER' | 'OTHER';
 export type Decimal = number;
+
+/**
+ * Parses an ISO 8601 date string and validates it.
+ * @param dateStr - Date string in ISO 8601 format
+ * @returns Date object if valid, null if parsing fails
+ */
+export function parseExpiryDate(dateStr: string): Date | null {
+  if (!dateStr || typeof dateStr !== 'string') {
+    return null;
+  }
+
+  const trimmed = dateStr.trim();
+  const parsed = new Date(trimmed);
+
+  // Check if date is valid
+  if (isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed;
+}
 
 export interface Money {
   amountMinor: bigint;
@@ -392,4 +447,25 @@ export interface Recommendation {
   strategy: PaymentStrategy;
   trace: CalculationTrace;
   explanation?: string;
+}
+
+// Historical Savings Tracking Types
+export interface BenefitApplication {
+  benefitId: string;
+  benefitType: string;
+  benefitSourceId: string;
+  benefitSourceName: string;
+  amountApplied: Money;
+}
+
+export interface SavingsEntry {
+  id: string;
+  timestamp: number;
+  merchantId: string;
+  cartTotal: Money;
+  selectedStrategy: PaymentStrategy;
+  originalTotal: Money;
+  savings: Money;
+  paymentMethodUsed?: PaymentMethod;
+  benefitsApplied: BenefitApplication[];
 }

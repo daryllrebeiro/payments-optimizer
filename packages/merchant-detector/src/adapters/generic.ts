@@ -48,13 +48,44 @@ function detectCurrencyFromMeta(domContentStub: string): Currency {
   return 'INR'; // default
 }
 
+/**
+ * Sanitizes a string for safe use in DOM operations
+ * @param input - Input string to sanitize
+ * @returns Sanitized string with potentially dangerous content removed
+ */
+function sanitizeInput(input: string): string {
+  if (typeof input !== 'string') {
+    return '';
+  }
+
+  // Limit length to prevent DoS
+  const MAX_LENGTH = 10000;
+  let sanitized = input.slice(0, MAX_LENGTH);
+
+  // Remove script tags and their content
+  sanitized = sanitized.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  // Remove style tags and their content
+  sanitized = sanitized.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+  // Remove event handlers
+  sanitized = sanitized.replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, '');
+  // Remove javascript: URLs
+  sanitized = sanitized.replace(/javascript:/gi, '');
+  // Remove data URIs
+  sanitized = sanitized.replace(/data:\s*[^,]*,/gi, '');
+
+  return sanitized;
+}
+
 function extractFromOpenGraph(
   domContentStub: string,
   currency: Currency
 ): { price: Money | null; title: string | null; merchantId: string | null } {
+  // Sanitize input before processing
+  const sanitizedStub = sanitizeInput(domContentStub);
+
   if (typeof DOMParser !== 'undefined') {
     const parser = new DOMParser();
-    const doc = parser.parseFromString(domContentStub, 'text/html');
+    const doc = parser.parseFromString(sanitizedStub, 'text/html');
 
     const title =
       doc.querySelector('meta[property="og:title"]')?.getAttribute('content') ??
@@ -75,10 +106,10 @@ function extractFromOpenGraph(
     return { price, title, merchantId };
   }
 
-  // Regex fallback
-  const titleMatch = domContentStub.match(/og:title.*?content="([^"]+)"/i);
-  const priceMatch = domContentStub.match(/og:price:amount.*?content="([^"]+)"/i);
-  const siteMatch = domContentStub.match(/og:site_name.*?content="([^"]+)"/i);
+  // Regex fallback - use more restrictive patterns
+  const titleMatch = sanitizedStub.match(/og:title\s+content\s*=\s*["']([^"']{0,200})["']/i);
+  const priceMatch = sanitizedStub.match(/og:price:amount\s+content\s*=\s*["']([^"']{0,50})["']/i);
+  const siteMatch = sanitizedStub.match(/og:site_name\s+content\s*=\s*["']([^"']{0,200})["']/i);
 
   const title = titleMatch?.[1] ?? null;
   const price = priceMatch?.[1] ? parsePriceString(priceMatch[1], currency) : null;

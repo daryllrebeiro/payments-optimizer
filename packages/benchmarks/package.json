@@ -1,0 +1,22 @@
+{
+  "name": "@payments-optimizer/benchmarks",
+  "version": "0.7.0",
+  "description": "Performance benchmarking for payment optimization algorithms",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "bench": "node --experimental-vm-modules dist/run-benchmarks.js"
+  },
+  "dependencies": {
+    "@payments-optimizer/benefits": "workspace:*",
+    "@payments-optimizer/domain": "workspace:*",
+    "@payments-optimizer/offer-engine": "workspace:*",
+    "@payments-optimizer/rules-engine": "workspace:*",
+    "@payments-optimizer/test-fixtures": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

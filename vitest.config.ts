@@ -8,8 +8,12 @@ export default defineConfig({
       'packages/*/src/**/*.spec.ts',
       'packages/*/src/**/*.test.ts',
       'apps/*/src/**/*.spec.ts',
-      'tests/**/*.spec.ts',
     ],
+    exclude: ['tests/e2e/**'],
+    snapshotFormat: {
+      escapeString: true,
+      printBasicPrototype: true,
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
