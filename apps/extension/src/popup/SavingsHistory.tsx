@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import type { SavingsEntry } from '@payments-optimizer/savings';
+import type { SavingsEntry } from '@payments-optimizer/domain';
 import type { Currency } from '@payments-optimizer/domain';
 
 interface SavingsHistoryProps {

@@ -27,7 +27,7 @@ export function isValidApiKey(apiKey: string): boolean {
  * Checks if the rate limit has been exceeded for AI API calls
  * @returns true if under the limit, false if rate limited
  */
-function isRateLimited(): boolean {
+async function isRateLimited(): Promise<boolean> {
   if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
     return false;
   }

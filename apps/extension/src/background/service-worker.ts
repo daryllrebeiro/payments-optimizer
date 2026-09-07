@@ -178,7 +178,7 @@ async function saveOptimizationResult(
  * Checks if rate limit has been exceeded for a specific user/session
  * @returns true if under the limit, false if rate limited
  */
-function isOptimizationRateLimited(): boolean {
+async function isOptimizationRateLimited(): Promise<boolean> {
   if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
     return false;
   }

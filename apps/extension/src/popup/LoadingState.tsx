@@ -10,10 +10,10 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
   size = 'md',
 }) => {
   const sizes = {
-    sm: 'h-4 w-4 border-2',
-    md: 'h-8 w-8 border-2',
-    lg: 'h-12 w-12 border-4',
-  };
+    sm: { height: '16px', width: '16px', borderWidth: '2px' },
+    md: { height: '32px', width: '32px', borderWidth: '2px' },
+    lg: { height: '48px', width: '48px', borderWidth: '4px' },
+  } as const;
 
   return (
     <div

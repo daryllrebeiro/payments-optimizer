@@ -1,5 +1,4 @@
 import React from 'react';
-import type { SavingsEntry } from '@payments-optimizer/savings';
 import type { Currency } from '@payments-optimizer/domain';
 
 interface SavingsSummaryProps {

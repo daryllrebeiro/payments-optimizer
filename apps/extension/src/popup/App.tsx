@@ -14,7 +14,7 @@ export type ViewType = 'DASHBOARD' | 'BENEFITS' | 'CARDS' | 'SETTINGS' | 'DIAGNO
 
 // Savings view component (local to App.tsx)
 function SavingsView({ profile }: { profile: UserProfile }) {
-  const [savingsEntries, setSavingsEntries] = React.useState<import('@payments-optimizer/savings').SavingsEntry[]>([]);
+  const [savingsEntries, setSavingsEntries] = React.useState<import('@payments-optimizer/domain').SavingsEntry[]>([]);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {

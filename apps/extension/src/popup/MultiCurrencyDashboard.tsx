@@ -1,7 +1,43 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import type { Currency } from '@payments-optimizer/domain';
-import type { Money, ConvertedMoney } from '@payments-optimizer/exchange';
-import { convertMoney } from '@payments-optimizer/exchange';
+import React, { useState, useEffect } from 'react';
+import type { Currency, Money } from '@payments-optimizer/domain';
+
+/**
+ * Local-first, deterministic currency conversion using a fixed snapshot of
+ * indicative rates (per unit of currency in INR minor-value terms).
+ * No network call: this preserves the product's zero-egress default.
+ */
+const FIXED_RATES: Record<Currency, number> = {
+  INR: 1,
+  USD: 83.2,
+  EUR: 90.5,
+  GBP: 105.6,
+  JPY: 0.56,
+  SGD: 61.8,
+  AED: 22.65,
+};
+
+export interface ConvertedMoney {
+  amountMinor: bigint;
+  currency: Currency;
+  rate: number;
+  timestamp: number;
+}
+
+export function convertMoney(
+  money: Money,
+  targetCurrency: Currency
+): Promise<ConvertedMoney> {
+  const sourceRate = FIXED_RATES[money.currency];
+  const targetRate = FIXED_RATES[targetCurrency];
+  const rate = sourceRate / targetRate;
+  const convertedMinor = BigInt(Math.round(Number(money.amountMinor) * rate));
+  return Promise.resolve({
+    amountMinor: convertedMinor,
+    currency: targetCurrency,
+    rate,
+    timestamp: Date.now(),
+  });
+}
 
 interface CurrencySelectorProps {
   value: Currency;
@@ -9,7 +45,7 @@ interface CurrencySelectorProps {
 }
 
 function CurrencySelector({ value, onChange }: CurrencySelectorProps) {
-  const currencies: Currency[] = ['INR', 'USD', 'EUR', 'GBP', 'JPY', 'SGD', 'AED', 'CAD', 'AUD'];
+  const currencies: Currency[] = ['INR', 'USD', 'EUR', 'GBP', 'JPY', 'SGD', 'AED'];
 
   return (
     <select
