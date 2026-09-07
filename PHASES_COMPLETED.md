@@ -3,7 +3,7 @@
 ## Phase 1: Stabilization & Hardening
 
 **Target**: 4 weeks  
-**Status**: 🔄 In Progress (7/10 epics complete)
+**Status**: 🔄 In Progress (8/10 epics complete)
 
 ### Completed Epics
 
@@ -138,18 +138,35 @@
 
 ---
 
+#### ✅ Epic 1.8: Clock Injection for Deterministic Tests (P2)
+**Completed**: September 7, 2026  
+**Commit**: `4e082eb`
+
+**Achievement**: Deterministic time handling for reliable time-based testing
+
+**Implementation**:
+- Clock interface with SystemClock (production) and TestClock (testing)
+- TestClock with controllable time progression (no waiting in tests)
+- Time travel: advance by ms/seconds/minutes/hours/days
+- Global clock management + dependency injection support
+- Helper methods for common time operations
+
+**Tests**: 36 tests passing  
+**Documentation**: `docs/epic-1.8-clock-injection.md`
+
+---
+
 ### In Progress
 
-#### 🔄 Epic 1.8: Clock Injection for Deterministic Tests (P2)
+#### 🔄 Epic 1.9: Observability: Structured Logger + Privacy-First Telemetry (P1)
 **Status**: Next in queue
 
-**Goal**: Deterministic time handling for reliable testing
+**Goal**: Production-grade logging and telemetry with privacy safeguards
 
 ---
 
 ### Upcoming Epics
 
-- [ ] **Epic 1.8**: Clock Injection for Deterministic Tests (P2)
 - [ ] **Epic 1.9**: Observability: Structured Logger + Privacy-First Telemetry (P1)
 - [ ] **Epic 1.10**: Test Coverage Expansion
 
@@ -159,25 +176,28 @@
 
 ### Statistics
 
-**Epics Completed**: 7/10 (70%)  
-**Total Tests Added**: 226 (13 + 25 + 42 + 16 + 12 + 41 + 69 + 8 existing)  
-**Test Success Rate**: 99.6% (225/226 passing, 1 skipped)  
-**Documentation**: 6 epic reports + 1 tracking file
+**Epics Completed**: 8/10 (80%)  
+**Total Tests Added**: 262 (13 + 25 + 42 + 16 + 12 + 41 + 69 + 36 + 8 existing)  
+**Test Success Rate**: 99.6% (261/262 passing, 1 skipped)  
+**Documentation**: 7 epic reports + 1 tracking file
 
 ### Files Created/Modified
 
-**Created** (40 files):
+**Created** (44 files):
 - `docs/epic-1.1-beam-search-implementation.md`
 - `docs/epic-1.2-transaction-coordinator-implementation.md`
 - `docs/epic-1.3-domain-serializer-implementation.md`
 - `docs/epic-1.4-indexeddb-indexes-implementation.md`
 - `docs/epic-1.5-circuit-breaker-implementation.md`
 - `docs/epic-1.6-structured-errors-result-type.md`
+- `docs/epic-1.8-clock-injection.md`
 - `packages/benchmarks/src/run-stacking-bench.ts`
 - `packages/benchmarks/src/stacking-engine-bench.ts`
 - `packages/benefits/src/stacking/stacking-engine.spec.ts`
 - `packages/domain/src/circuit-breaker.spec.ts`
 - `packages/domain/src/circuit-breaker.ts`
+- `packages/domain/src/clock.spec.ts`
+- `packages/domain/src/clock.ts`
 - `packages/domain/src/errors.spec.ts`
 - `packages/domain/src/errors.ts`
 - `packages/domain/src/message-schemas.spec.ts`
@@ -191,7 +211,7 @@
 - `packages/storage/src/migration-runner.spec.ts`
 - `packages/storage/src/migrations/v2-add-savings-indexes.ts`
 - `packages/storage/src/operations.spec.ts`
-- `packages/storage/src/operations.ts`
+- `packages/domain/src/operations.ts`
 - `packages/storage/src/savings-repository.spec.ts`
 - `packages/storage/src/savings-repository.ts`
 - `packages/storage/src/transaction-coordinator.spec.ts`
@@ -231,4 +251,4 @@
 ---
 
 *Last Updated*: September 7, 2026  
-*Next Epic*: 1.8 - Clock Injection for Deterministic Tests
+*Next Epic*: 1.9 - Observability: Structured Logger + Privacy-First Telemetry
