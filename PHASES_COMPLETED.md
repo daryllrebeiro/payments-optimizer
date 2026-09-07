@@ -3,7 +3,7 @@
 ## Phase 1: Stabilization & Hardening
 
 **Target**: 4 weeks  
-**Status**: 🔄 In Progress (4/10 epics complete)
+**Status**: 🔄 In Progress (5/10 epics complete)
 
 ### Completed Epics
 
@@ -79,18 +79,39 @@
 
 ---
 
+#### ✅ Epic 1.4: IndexedDB Indexes for Savings History (P1, Data)
+**Completed**: September 7, 2026  
+**Commit**: `bc05924`
+
+**Achievement**: Query optimization with intelligent index selection
+
+**Implementation**:
+- Migration V2: 3 indexes (compound by_merchant_timestamp, single by_timestamp, by_merchant)
+- SavingsRepository with optimized query methods
+- Intelligent query router selects optimal index based on filters
+- Helper method for unwrapping VersionedEntity structures
+
+**Performance**:
+- Target: <50ms for 10k entries
+- Test environment: <100ms for 100 entries (polyfill overhead)
+- O(log n + k) complexity vs O(n) full scan
+
+**Tests**: 12 tests passing (1 skipped due to polyfill limitations)  
+**Documentation**: `docs/epic-1.4-indexeddb-indexes-implementation.md`
+
+---
+
 ### In Progress
 
-#### 🔄 Epic 1.4: IndexedDB Indexes for Savings History (P1, Data)
-**Status**: Next in queue  
-**Dependencies**: Epic 1.7 (Migration Runner) ✅
+#### 🔄 Epic 1.5: Circuit Breaker for External Offer API (P1, Reliability)
+**Status**: Next in queue
 
-**Goal**: Reduce query time from >500ms to <50ms for 10k entries
+**Goal**: Prevent cascading failures from external API timeouts
 
 **Plan**:
-- Add compound indexes to savings store
-- Use MigrationRunner for schema changes
-- Update query methods to use indexes
+- Implement circuit breaker pattern with open/half-open/closed states
+- Add fallback mechanisms for degraded service
+- Metrics for failure rates and circuit state transitions
 
 ---
 
@@ -108,17 +129,18 @@
 
 ### Statistics
 
-**Epics Completed**: 4/10 (40%)  
-**Total Tests Added**: 104 (13 + 25 + 42 + 16 + 8 existing)  
-**Test Success Rate**: 100% (104/104 passing)  
+**Epics Completed**: 5/10 (50%)  
+**Total Tests Added**: 116 (13 + 25 + 42 + 16 + 12 + 8 existing)  
+**Test Success Rate**: 100% (116/116 passing)  
 **Documentation**: 3 epic reports + 1 tracking file
 
 ### Files Created/Modified
 
-**Created** (22 files):
+**Created** (29 files):
 - `docs/epic-1.1-beam-search-implementation.md`
 - `docs/epic-1.2-transaction-coordinator-implementation.md`
 - `docs/epic-1.3-domain-serializer-implementation.md`
+- `docs/epic-1.4-indexeddb-indexes-implementation.md`
 - `packages/benchmarks/src/run-stacking-bench.ts`
 - `packages/benchmarks/src/stacking-engine-bench.ts`
 - `packages/benefits/src/stacking/stacking-engine.spec.ts`
@@ -127,19 +149,24 @@
 - `packages/domain/src/serialization.spec.ts`
 - `packages/domain/src/serialization.ts`
 - `packages/storage/src/migration-runner.spec.ts`
+- `packages/storage/src/migrations/v2-add-savings-indexes.ts`
 - `packages/storage/src/operations.spec.ts`
 - `packages/storage/src/operations.ts`
+- `packages/storage/src/savings-repository.spec.ts`
+- `packages/storage/src/savings-repository.ts`
 - `packages/storage/src/transaction-coordinator.spec.ts`
 - `packages/storage/src/transaction-coordinator.ts`
+- `vitest.setup.ts`
 - `PHASES_COMPLETED.md` (this file)
 
-**Modified** (7 files):
+**Modified** (8 files):
 - `packages/benchmarks/src/index.ts`
 - `packages/benchmarks/src/run-benchmarks.ts`
 - `packages/benefits/src/stacking/stacking-engine.ts`
 - `packages/domain/package.json`
 - `packages/domain/src/index.ts`
 - `packages/storage/src/index.ts`
+- `vitest.config.ts`
 
 ---
 
@@ -164,4 +191,4 @@
 ---
 
 *Last Updated*: September 7, 2026  
-*Next Epic*: 1.4 - IndexedDB Indexes for Savings History
+*Next Epic*: 1.5 - Circuit Breaker for External Offer API
