@@ -25,7 +25,7 @@ import {
   isNotFoundError,
   isNetworkError,
   isTimeoutError,
-} from './errors';
+} from './errors.js';
 
 describe('Structured Errors', () => {
   describe('ValidationError', () => {

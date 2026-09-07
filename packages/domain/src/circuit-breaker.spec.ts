@@ -3,11 +3,11 @@
  * Epic 1.5: Verify state transitions and failure handling
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { CircuitBreakerOpenError } from './errors.js';
 import {
   CircuitBreaker,
   CircuitState,
-  CircuitBreakerOpenError,
   createCircuitBreaker,
   type CircuitBreakerConfig,
 } from './circuit-breaker.js';

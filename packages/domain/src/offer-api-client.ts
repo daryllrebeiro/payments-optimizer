@@ -231,7 +231,7 @@ export function createOfferApiClient(
     baseUrl,
     timeout: overrides?.timeout ?? 5000,
     retries: overrides?.retries ?? 3,
-    circuitBreaker: overrides?.circuitBreaker,
+    ...(overrides?.circuitBreaker !== undefined && { circuitBreaker: overrides.circuitBreaker }),
   };
 
   return new OfferApiClient(config);

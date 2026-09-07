@@ -15,7 +15,7 @@ import {
   combineAll,
   isDomainError,
   toDomainError,
-} from './result';
+} from './result.js';
 
 describe('Result', () => {
   describe('Ok variant', () => {
@@ -56,7 +56,7 @@ describe('Result', () => {
         return ok(10 / x);
       };
 
-      const result = ok(5);
+      const result = ok<number, Error>(5);
       const chained = result.andThen(divide);
       expect(chained.isOk()).toBe(true);
       expect(chained.unwrap()).toBe(2);
@@ -157,7 +157,7 @@ describe('Result', () => {
     it('should match on err pattern', () => {
       const result = err<number, Error>(new Error('Failed'));
       const output = result.match({
-        ok: () => 0,
+        ok: () => '0',
         err: (e) => e.message,
       });
       expect(output).toBe('Failed');

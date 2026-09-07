@@ -13,7 +13,7 @@ import {
   resetClock,
   createTestClock,
   createSystemClock,
-} from './clock';
+} from './clock.js';
 
 describe('SystemClock', () => {
   it('should return current time', () => {

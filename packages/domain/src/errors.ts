@@ -7,7 +7,7 @@
  * - Type safety (for exhaustive matching)
  */
 
-import { DomainError } from './result';
+import { DomainError } from './result.js';
 
 /**
  * Validation errors - input data doesn't meet requirements
@@ -287,4 +287,4 @@ export function isDomainError(error: unknown): error is DomainError {
   return error instanceof DomainError;
 }
 // Re-export DomainError from result
-export { DomainError } from './result';
+export { DomainError } from './result.js';

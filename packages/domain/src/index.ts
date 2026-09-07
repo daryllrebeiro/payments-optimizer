@@ -479,7 +479,37 @@ export * from './circuit-breaker.js';
 
 // Result type and error handling
 export * from './result.js';
-export * from './errors.js';
+export {
+  ValidationError,
+  NotFoundError,
+  InsufficientResourceError,
+  TimeoutError,
+  NetworkError,
+  CircuitBreakerOpenError,
+  StorageError,
+  TransactionError,
+  MigrationError,
+  ConfigurationError,
+  AuthorizationError,
+  BusinessLogicError,
+  ConflictError,
+  RateLimitError,
+  isValidationError,
+  isNotFoundError,
+  isInsufficientResourceError,
+  isTimeoutError,
+  isNetworkError,
+  isCircuitBreakerOpenError,
+  isStorageError,
+  isTransactionError,
+  isMigrationError,
+  isConfigurationError,
+  isAuthorizationError,
+  isBusinessLogicError,
+  isConflictError,
+  isRateLimitError,
+  ErrorCode,
+} from './errors.js';
 
 // Clock abstraction for time handling
 export * from './clock.js';

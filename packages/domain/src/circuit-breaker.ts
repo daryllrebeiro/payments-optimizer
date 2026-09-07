@@ -8,7 +8,7 @@
  * - HALF_OPEN: Testing if service recovered, limited requests pass through
  */
 
-import { CircuitBreakerOpenError } from './errors';
+import { CircuitBreakerOpenError } from './errors.js';
 
 export enum CircuitState {
   CLOSED = 'CLOSED',
@@ -33,8 +33,8 @@ export interface CircuitBreakerMetrics {
   successes: number;
   consecutiveFailures: number;
   consecutiveSuccesses: number;
-  lastFailureTime?: number;
-  lastSuccessTime?: number;
+  lastFailureTime: number | undefined;
+  lastSuccessTime: number | undefined;
   totalRequests: number;
   rejectedRequests: number;
 }
@@ -48,9 +48,9 @@ export class CircuitBreaker {
   private successCount = 0;
   private consecutiveFailures = 0;
   private consecutiveSuccesses = 0;
-  private lastFailureTime?: number;
-  private lastSuccessTime?: number;
-  private nextAttemptTime?: number;
+  private lastFailureTime: number | undefined = undefined;
+  private lastSuccessTime: number | undefined = undefined;
+  private nextAttemptTime: number | undefined = undefined;
   private totalRequests = 0;
   private rejectedRequests = 0;
 

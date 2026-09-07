@@ -10,9 +10,9 @@
  * - Privacy safeguards for sensitive data (PII, financial, credentials)
  */
 
-import { Result, ok, err } from './result';
-import { Clock, getClock } from './clock';
-import { DomainError, isDomainError } from './errors';
+import { Result, ok, err } from './result.js';
+import { Clock, getClock } from './clock.js';
+import { DomainError, isDomainError } from './errors.js';
 
 /**
  * Log level enum
@@ -58,6 +58,7 @@ export interface LoggerConfig {
   redactPaths?: string[];
   maxDepth?: number;
   includeTimestamp?: boolean;
+  context?: Record<string, unknown>;
 }
 
 /**
@@ -107,6 +108,7 @@ export class Logger {
       redactPaths: [...(config.redactPaths ?? []), ...DEFAULT_REDACTED_PATHS],
       maxDepth: config.maxDepth ?? 10,
       includeTimestamp: config.includeTimestamp ?? true,
+      ...(config.context !== undefined && { context: config.context }),
     };
     this.clock = getClock();
   }
@@ -124,10 +126,16 @@ export class Logger {
    */
   child(context: Record<string, unknown>): Logger {
     const newContext = { ...this.config.context, ...context };
-    return new Logger({
+    const childLogger = new Logger({
       ...this.config,
       context: newContext,
     });
+    // Preserve correlation ID and clock
+    if (this.correlationId) {
+      childLogger.correlationId = this.correlationId;
+    }
+    childLogger.clock = this.clock;
+    return childLogger;
   }
 
   /**
@@ -180,12 +188,13 @@ export class Logger {
    */
   errorWithStack(error: Error, context?: Record<string, unknown>): void {
     if (this.shouldLog(LogLevel.ERROR)) {
+      const domainError = isDomainError(error) ? error : undefined;
       const errorInfo: ErrorInfo = {
         name: error.name,
         message: error.message,
-        stack: error.stack,
-        code: isDomainError(error) ? error.code : undefined,
-        context: isDomainError(error) ? error.context : undefined,
+        ...(error.stack !== undefined && { stack: error.stack }),
+        ...(domainError !== undefined && { code: domainError.code }),
+        ...(domainError?.context !== undefined && { context: domainError.context }),
       };
       this.log(LogLevel.ERROR, error.message, { ...context, error: errorInfo });
     }
@@ -259,12 +268,18 @@ export class Logger {
    * Create log entry and output
    */
   private log(level: LogLevel, message: string, context?: Record<string, unknown>): void {
+    // Merge config context with provided context
+    const mergedContext = {
+      ...(this.config.context ?? {}),
+      ...(context ?? {}),
+    };
+
     const entry: LogEntry = {
       timestamp: this.clock.toISO(),
       level,
       message,
-      context: this.redact(context ?? {}),
-      correlationId: this.correlationId,
+      context: this.redact(mergedContext),
+      ...(this.correlationId !== undefined && { correlationId: this.correlationId }),
     };
 
     const output = this.formatEntry(entry);

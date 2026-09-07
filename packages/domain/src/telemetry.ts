@@ -10,8 +10,8 @@
  * - Local-only or remote capable
  */
 
-import { Logger, getLogger } from './logger';
-import { Clock, getClock } from './clock';
+import { Logger, getLogger } from './logger.js';
+import { Clock, getClock } from './clock.js';
 
 /**
  * Telemetry event interface
@@ -104,9 +104,11 @@ export class Telemetry {
   private enabled: boolean;
 
   constructor(config: TelemetryConfig = {}) {
+    const enabled = config.enabled ?? true;
+    const sampleRate = config.sampleRate ?? 1.0;
     this.config = {
-      enabled: config.enabled ?? true,
-      sampleRate: config.sampleRate ?? 1.0,      // Send all events by default
+      enabled,
+      sampleRate,                      // Send all events by default
       maxQueueSize: config.maxQueueSize ?? 1000,
       flushInterval: config.flushInterval ?? 5000, // 5 seconds
       includePii: config.includePii ?? false,    // Privacy first - opt-in
@@ -114,7 +116,7 @@ export class Telemetry {
     };
     this.logger = getLogger();
     this.clock = getClock();
-    this.enabled = this.config.enabled && Math.random() < this.config.sampleRate;
+    this.enabled = enabled && Math.random() < sampleRate;
     
     if (this.enabled) {
       this.startFlushTimer();
