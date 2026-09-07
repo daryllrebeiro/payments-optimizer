@@ -12,6 +12,10 @@ export interface VersionedEntity<T> {
 export * from './transaction-coordinator.js';
 export * from './operations.js';
 
+// Export savings repository and migrations
+export * from './savings-repository.js';
+export * from './migrations/v2-add-savings-indexes.js';
+
 /**
  * Serializes data for hashing, handling BigInt values
  * @param data - Data to serialize
