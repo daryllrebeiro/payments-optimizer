@@ -483,3 +483,9 @@ export * from './errors.js';
 
 // Clock abstraction for time handling
 export * from './clock.js';
+
+// Logger with privacy-first design
+export * from './logger.js';
+
+// Telemetry system
+export * from './telemetry.js';

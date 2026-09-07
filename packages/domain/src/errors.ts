@@ -279,3 +279,12 @@ export enum ErrorCode {
   RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED',
   UNKNOWN_ERROR = 'UNKNOWN_ERROR',
 }
+
+/**
+ * Type guard for DomainError
+ */
+export function isDomainError(error: unknown): error is DomainError {
+  return error instanceof DomainError;
+}
+// Re-export DomainError from result
+export { DomainError } from './result';
