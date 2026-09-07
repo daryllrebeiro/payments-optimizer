@@ -480,3 +480,6 @@ export * from './circuit-breaker.js';
 // Result type and error handling
 export * from './result.js';
 export * from './errors.js';
+
+// Clock abstraction for time handling
+export * from './clock.js';
