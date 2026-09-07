@@ -19,7 +19,7 @@ function safeBigIntToNumber(amountMinor: bigint): number {
 export interface OpportunityScoreInput {
   immediateSavings: Money;
   rewardValue: Money;
-  appliedVouchers: UserVoucher[];
+  appliedVouchers: Array<Pick<UserVoucher, 'expiryDate'>>;
   isPartnerPromoApplied: boolean;
   alternativeCardPromoSavings?: Money;
   complexityStepsCount: number;

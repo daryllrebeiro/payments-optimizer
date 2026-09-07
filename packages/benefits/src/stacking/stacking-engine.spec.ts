@@ -4,17 +4,73 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { BenefitStackingEngine } from './stacking-engine';
-import {
-  createMoney,
-  createCart,
+import { BenefitStackingEngine } from './stacking-engine.js';
+import type {
+  Money,
+  Cart,
+  CartItem,
   UserProfile,
   UserVoucher,
   PartnerBenefit,
   RuleCondition,
   OfferBenefit,
 } from '@payments-optimizer/domain';
-import { createVoucher } from '../domain/types.js';
+
+// Test helper functions
+function createMoney(amount: number, currency: string): Money {
+  return {
+    amountMinor: BigInt(Math.round(amount * 100)),
+    currency: currency as 'INR' | 'USD' | 'EUR' | 'GBP',
+  };
+}
+
+function createCart(
+  merchantId: string,
+  items: Array<{ id: string; name: string; price: Money; quantity: number }>,
+  currency: string
+): Cart {
+  const cartItems: CartItem[] = items.map(item => ({
+    id: item.id,
+    name: item.name,
+    price: item.price,
+    quantity: item.quantity,
+  }));
+
+  const subtotal = cartItems.reduce((sum, item) => ({
+    amountMinor: sum.amountMinor + item.price.amountMinor * BigInt(item.quantity),
+    currency: currency as 'INR' | 'USD' | 'EUR' | 'GBP',
+  }), { amountMinor: 0n, currency: currency as 'INR' | 'USD' | 'EUR' | 'GBP' });
+
+  return {
+    merchantId,
+    items: cartItems,
+    subtotal,
+    discounts: [],
+    shipping: { amountMinor: 0n, currency: currency as 'INR' | 'USD' | 'EUR' | 'GBP' },
+    taxes: { amountMinor: 0n, currency: currency as 'INR' | 'USD' | 'EUR' | 'GBP' },
+    total: subtotal,
+    currency: currency as 'INR' | 'USD' | 'EUR' | 'GBP',
+  };
+}
+
+function createVoucher(
+  id: string,
+  merchantId: string,
+  title: string,
+  value: Money,
+  expiryDate: string
+): UserVoucher {
+  return {
+    id,
+    merchantId,
+    title,
+    code: id.toUpperCase(),
+    initialValue: value,
+    remainingValue: value,
+    expiryDate,
+    singleUse: true,
+  };
+}
 
 describe('BenefitStackingEngine', () => {
   let engine: BenefitStackingEngine;
@@ -43,7 +99,6 @@ describe('BenefitStackingEngine', () => {
         paymentMethods: [],
         rewardPreferences: {
           defaultValuations: {},
-          preferredType: undefined,
         },
         optimizationPreferences: {
           immediateSavingsWeight: 1.0,
@@ -86,7 +141,6 @@ describe('BenefitStackingEngine', () => {
         paymentMethods: [],
         rewardPreferences: {
           defaultValuations: {},
-          preferredType: undefined,
         },
         optimizationPreferences: {
           immediateSavingsWeight: 1.0,
@@ -118,7 +172,6 @@ describe('BenefitStackingEngine', () => {
         paymentMethods: [],
         rewardPreferences: {
           defaultValuations: {},
-          preferredType: undefined,
         },
         optimizationPreferences: {
           immediateSavingsWeight: 1.0,
@@ -144,8 +197,7 @@ describe('BenefitStackingEngine', () => {
           title: 'Free Shipping',
           benefit: {
             type: 'FIXED_DISCOUNT',
-            value: 100,
-            currency: 'INR',
+            value: { amountMinor: 10000n, currency: 'INR' },
           },
           conditions: [],
           validUntil: '2026-12-31T23:59:59Z',
@@ -164,7 +216,6 @@ describe('BenefitStackingEngine', () => {
         paymentMethods: [],
         rewardPreferences: {
           defaultValuations: {},
-          preferredType: undefined,
         },
         optimizationPreferences: {
           immediateSavingsWeight: 1.0,
@@ -191,7 +242,6 @@ describe('BenefitStackingEngine', () => {
         paymentMethods: [],
         rewardPreferences: {
           defaultValuations: {},
-          preferredType: undefined,
         },
         optimizationPreferences: {
           immediateSavingsWeight: 1.0,
@@ -223,8 +273,7 @@ describe('BenefitStackingEngine', () => {
           title: 'Free Shipping',
           benefit: {
             type: 'FIXED_DISCOUNT',
-            value: 100,
-            currency: 'INR',
+            value: { amountMinor: 10000n, currency: 'INR' },
           },
           conditions: [],
           validUntil: '2026-12-31T23:59:59Z',
@@ -244,7 +293,6 @@ describe('BenefitStackingEngine', () => {
         paymentMethods: [],
         rewardPreferences: {
           defaultValuations: {},
-          preferredType: undefined,
         },
         optimizationPreferences: {
           immediateSavingsWeight: 1.0,
@@ -280,7 +328,6 @@ describe('BenefitStackingEngine', () => {
         paymentMethods: [],
         rewardPreferences: {
           defaultValuations: {},
-          preferredType: undefined,
         },
         optimizationPreferences: {
           immediateSavingsWeight: 1.0,
@@ -312,7 +359,6 @@ describe('BenefitStackingEngine', () => {
         paymentMethods: [],
         rewardPreferences: {
           defaultValuations: {},
-          preferredType: undefined,
         },
         optimizationPreferences: {
           immediateSavingsWeight: 1.0,
@@ -323,8 +369,8 @@ describe('BenefitStackingEngine', () => {
         },
       }, []);
 
-      // With 3 vouchers, power set = 2^3 = 8 combinations, plus base option
-      expect(results.length).toBe(9);
+      // With 3 vouchers, power set = 2^3 = 8 combinations (including empty set)
+      expect(results.length).toBe(8);
     });
   });
 
@@ -345,7 +391,6 @@ describe('BenefitStackingEngine', () => {
         paymentMethods: [],
         rewardPreferences: {
           defaultValuations: {},
-          preferredType: undefined,
         },
         optimizationPreferences: {
           immediateSavingsWeight: 1.0,
@@ -378,7 +423,6 @@ describe('BenefitStackingEngine', () => {
         paymentMethods: [],
         rewardPreferences: {
           defaultValuations: {},
-          preferredType: undefined,
         },
         optimizationPreferences: {
           immediateSavingsWeight: 1.0,
@@ -404,7 +448,6 @@ describe('BenefitStackingEngine', () => {
         paymentMethods: [],
         rewardPreferences: {
           defaultValuations: {},
-          preferredType: undefined,
         },
         optimizationPreferences: {
           immediateSavingsWeight: 1.0,

@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { OpportunityScorer } from './opportunity-scorer';
+import { OpportunityScorer } from './opportunity-scorer.js';
 
 describe('OpportunityScorer', () => {
   let scorer: OpportunityScorer;
@@ -25,8 +25,8 @@ describe('OpportunityScorer', () => {
   describe('Basic scoring', () => {
     it('should calculate score with only immediate savings', () => {
       const input = {
-        immediateSavings: { amountMinor: 1000n, currency: 'INR' },
-        rewardValue: { amountMinor: 0n, currency: 'INR' },
+        immediateSavings: { amountMinor: 1000n, currency: 'INR' as const },
+        rewardValue: { amountMinor: 0n, currency: 'INR' as const },
         appliedVouchers: [],
         isPartnerPromoApplied: false,
         complexityStepsCount: 0,
@@ -40,8 +40,8 @@ describe('OpportunityScorer', () => {
 
     it('should calculate score with only reward value', () => {
       const input = {
-        immediateSavings: { amountMinor: 0n, currency: 'INR' },
-        rewardValue: { amountMinor: 5000n, currency: 'INR' },
+        immediateSavings: { amountMinor: 0n, currency: 'INR' as const },
+        rewardValue: { amountMinor: 5000n, currency: 'INR' as const },
         appliedVouchers: [],
         isPartnerPromoApplied: false,
         complexityStepsCount: 0,
@@ -55,8 +55,8 @@ describe('OpportunityScorer', () => {
 
     it('should combine immediate savings and reward value', () => {
       const input = {
-        immediateSavings: { amountMinor: 1000n, currency: 'INR' },
-        rewardValue: { amountMinor: 2000n, currency: 'INR' },
+        immediateSavings: { amountMinor: 1000n, currency: 'INR' as const },
+        rewardValue: { amountMinor: 2000n, currency: 'INR' as const },
         appliedVouchers: [],
         isPartnerPromoApplied: false,
         complexityStepsCount: 0,
@@ -75,8 +75,8 @@ describe('OpportunityScorer', () => {
       tomorrow.setHours(10, 0, 0, 0);
 
       const input = {
-        immediateSavings: { amountMinor: 1000n, currency: 'INR' },
-        rewardValue: { amountMinor: 0n, currency: 'INR' },
+        immediateSavings: { amountMinor: 1000n, currency: 'INR' as const },
+        rewardValue: { amountMinor: 0n, currency: 'INR' as const },
         appliedVouchers: [{ expiryDate: tomorrow.toISOString() }],
         isPartnerPromoApplied: false,
         complexityStepsCount: 0,
@@ -94,8 +94,8 @@ describe('OpportunityScorer', () => {
       in3Days.setHours(10, 0, 0, 0);
 
       const input = {
-        immediateSavings: { amountMinor: 1000n, currency: 'INR' },
-        rewardValue: { amountMinor: 0n, currency: 'INR' },
+        immediateSavings: { amountMinor: 1000n, currency: 'INR' as const },
+        rewardValue: { amountMinor: 0n, currency: 'INR' as const },
         appliedVouchers: [{ expiryDate: in3Days.toISOString() }],
         isPartnerPromoApplied: false,
         complexityStepsCount: 0,
@@ -113,8 +113,8 @@ describe('OpportunityScorer', () => {
       in7Days.setHours(10, 0, 0, 0);
 
       const input = {
-        immediateSavings: { amountMinor: 1000n, currency: 'INR' },
-        rewardValue: { amountMinor: 0n, currency: 'INR' },
+        immediateSavings: { amountMinor: 1000n, currency: 'INR' as const },
+        rewardValue: { amountMinor: 0n, currency: 'INR' as const },
         appliedVouchers: [{ expiryDate: in7Days.toISOString() }],
         isPartnerPromoApplied: false,
         complexityStepsCount: 0,
@@ -131,8 +131,8 @@ describe('OpportunityScorer', () => {
       in30Days.setDate(in30Days.getDate() + 30);
 
       const input = {
-        immediateSavings: { amountMinor: 1000n, currency: 'INR' },
-        rewardValue: { amountMinor: 0n, currency: 'INR' },
+        immediateSavings: { amountMinor: 1000n, currency: 'INR' as const },
+        rewardValue: { amountMinor: 0n, currency: 'INR' as const },
         appliedVouchers: [{ expiryDate: in30Days.toISOString() }],
         isPartnerPromoApplied: false,
         complexityStepsCount: 0,
@@ -148,8 +148,8 @@ describe('OpportunityScorer', () => {
   describe('Membership value', () => {
     it('should add membership value when partner promo is applied', () => {
       const input = {
-        immediateSavings: { amountMinor: 1000n, currency: 'INR' },
-        rewardValue: { amountMinor: 0n, currency: 'INR' },
+        immediateSavings: { amountMinor: 1000n, currency: 'INR' as const },
+        rewardValue: { amountMinor: 0n, currency: 'INR' as const },
         appliedVouchers: [],
         isPartnerPromoApplied: true,
         complexityStepsCount: 0,
@@ -167,11 +167,11 @@ describe('OpportunityScorer', () => {
       in30Days.setDate(in30Days.getDate() + 30);
 
       const input = {
-        immediateSavings: { amountMinor: 1000n, currency: 'INR' },
-        rewardValue: { amountMinor: 0n, currency: 'INR' },
+        immediateSavings: { amountMinor: 1000n, currency: 'INR' as const },
+        rewardValue: { amountMinor: 0n, currency: 'INR' as const },
         appliedVouchers: [{ expiryDate: in30Days.toISOString() }],
         isPartnerPromoApplied: false,
-        alternativeCardPromoSavings: { amountMinor: 2000n, currency: 'INR' },
+        alternativeCardPromoSavings: { amountMinor: 2000n, currency: 'INR' as const },
         complexityStepsCount: 0,
         now: Date.now(),
       };
@@ -185,8 +185,8 @@ describe('OpportunityScorer', () => {
   describe('Complexity penalty', () => {
     it('should apply complexity penalty for each step', () => {
       const input = {
-        immediateSavings: { amountMinor: 1000n, currency: 'INR' },
-        rewardValue: { amountMinor: 0n, currency: 'INR' },
+        immediateSavings: { amountMinor: 1000n, currency: 'INR' as const },
+        rewardValue: { amountMinor: 0n, currency: 'INR' as const },
         appliedVouchers: [],
         isPartnerPromoApplied: false,
         complexityStepsCount: 10,
@@ -201,8 +201,8 @@ describe('OpportunityScorer', () => {
   describe('Score composition', () => {
     it('should produce positive score with good inputs', () => {
       const input = {
-        immediateSavings: { amountMinor: 10000n, currency: 'INR' },
-        rewardValue: { amountMinor: 5000n, currency: 'INR' },
+        immediateSavings: { amountMinor: 10000n, currency: 'INR' as const },
+        rewardValue: { amountMinor: 5000n, currency: 'INR' as const },
         appliedVouchers: [],
         isPartnerPromoApplied: true,
         complexityStepsCount: 0,
@@ -215,8 +215,8 @@ describe('OpportunityScorer', () => {
 
     it('should reduce score for complexity', () => {
       const input = {
-        immediateSavings: { amountMinor: 10000n, currency: 'INR' },
-        rewardValue: { amountMinor: 0n, currency: 'INR' },
+        immediateSavings: { amountMinor: 10000n, currency: 'INR' as const },
+        rewardValue: { amountMinor: 0n, currency: 'INR' as const },
         appliedVouchers: [],
         isPartnerPromoApplied: false,
         complexityStepsCount: 20,
@@ -231,8 +231,8 @@ describe('OpportunityScorer', () => {
   describe('Edge cases', () => {
     it('should handle zero values', () => {
       const input = {
-        immediateSavings: { amountMinor: 0n, currency: 'INR' },
-        rewardValue: { amountMinor: 0n, currency: 'INR' },
+        immediateSavings: { amountMinor: 0n, currency: 'INR' as const },
+        rewardValue: { amountMinor: 0n, currency: 'INR' as const },
         appliedVouchers: [],
         isPartnerPromoApplied: false,
         complexityStepsCount: 0,
@@ -245,8 +245,8 @@ describe('OpportunityScorer', () => {
 
     it('should handle very large amounts', () => {
       const input = {
-        immediateSavings: { amountMinor: 100000000n, currency: 'INR' },
-        rewardValue: { amountMinor: 50000000n, currency: 'INR' },
+        immediateSavings: { amountMinor: 100000000n, currency: 'INR' as const },
+        rewardValue: { amountMinor: 50000000n, currency: 'INR' as const },
         appliedVouchers: [],
         isPartnerPromoApplied: false,
         complexityStepsCount: 0,
@@ -262,8 +262,8 @@ describe('OpportunityScorer', () => {
       const tomorrow = new Date('2026-09-08T12:00:00Z');
 
       const input = {
-        immediateSavings: { amountMinor: 1000n, currency: 'INR' },
-        rewardValue: { amountMinor: 0n, currency: 'INR' },
+        immediateSavings: { amountMinor: 1000n, currency: 'INR' as const },
+        rewardValue: { amountMinor: 0n, currency: 'INR' as const },
         appliedVouchers: [{ expiryDate: tomorrow.toISOString() }],
         isPartnerPromoApplied: false,
         complexityStepsCount: 0,
