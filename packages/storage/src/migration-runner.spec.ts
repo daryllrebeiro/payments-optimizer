@@ -34,8 +34,8 @@ class MockIDBDatabase {
 
 class MockObjectStore {
   public name: string;
-  public keyPath?: string;
-  public autoIncrement?: boolean;
+  public keyPath?: string | undefined;
+  public autoIncrement?: boolean | undefined;
   public indexNames: string[] = [];
   private indexes = new Map<string, MockIndex>();
 

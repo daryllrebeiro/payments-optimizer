@@ -3,7 +3,8 @@
  * Epic 1.4: Optimized queries using IndexedDB indexes
  */
 
-import { IndexedDbRepository, type Migration } from './index.js';
+import { IndexedDbRepository } from './base-repository.js';
+import type { Migration } from './index.js';
 import { addSavingsIndexesMigration } from './migrations/v2-add-savings-indexes.js';
 
 /**

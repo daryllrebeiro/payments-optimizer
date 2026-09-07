@@ -96,7 +96,7 @@ export class TransactionCoordinator {
    * @returns Transaction result with all operation results or error
    */
   async executeAtomically<T = void>(
-    operations: Operation<T>[],
+    operations: Operation<any>[],
     options: TransactionOptions = {}
   ): Promise<TransactionResult<T>> {
     const { timeout = 30000, verbose = false } = options;
@@ -105,7 +105,7 @@ export class TransactionCoordinator {
       return { success: true, results: [] };
     }
 
-    const completedResults: OperationResult<T>[] = [];
+    const completedResults: OperationResult<any>[] = [];
     const startTime = Date.now();
 
     try {
@@ -184,8 +184,8 @@ export class TransactionCoordinator {
    * @param verbose - Whether to log rollback steps
    */
   private async rollbackOperations<T>(
-    operations: Operation<T>[],
-    completedResults: OperationResult<T>[],
+    operations: Operation<any>[],
+    completedResults: OperationResult<any>[],
     verbose: boolean
   ): Promise<void> {
     // Roll back in reverse order (LIFO)

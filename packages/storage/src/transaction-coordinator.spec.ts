@@ -268,14 +268,14 @@ describe('TransactionCoordinator', () => {
     });
 
     it('should include partial results in error', async () => {
-      const op1: Operation = {
+      const op1: Operation<string> = {
         id: 'op-1',
         description: 'First',
         execute: vi.fn(async () => ({ success: true, data: 'result1', rollbackData: 'data1' })),
         rollback: vi.fn(),
       };
 
-      const op2: Operation = {
+      const op2: Operation<void> = {
         id: 'op-2',
         description: 'Second (fails)',
         execute: vi.fn(async () => ({ success: false, error: new Error('Failed') })),
