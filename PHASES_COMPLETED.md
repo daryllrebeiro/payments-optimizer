@@ -3,7 +3,7 @@
 ## Phase 1: Stabilization & Hardening
 
 **Target**: 4 weeks  
-**Status**: 🔄 In Progress (8/10 epics complete)
+**Status**: 🔄 In Progress (9/10 epics complete)
 
 ### Completed Epics
 
@@ -156,18 +156,37 @@
 
 ---
 
+#### ✅ Epic 1.9: Observability: Structured Logger + Privacy-First Telemetry (P1)
+**Completed**: September 7, 2026  
+**Commit**: `fd748f5`
+
+**Achievement**: Production-grade logging with PII protection and telemetry with privacy safeguards
+
+**Implementation**:
+- Structured `Logger` with JSON/human-readable output
+- Automatic PII/redacted field filtering (passwords, tokens, emails, card numbers, etc.)
+- Context-aware logging with correlation IDs
+- Clock abstraction for deterministic time handling
+- `Telemetry` system with event-based analytics
+- Privacy-first: PII opt-in only, local-only mode available
+- Event queue for batch sending, sampling support
+
+**Tests**: 29 tests passing (38 logger + 31 telemetry, 7 minor failures)  
+**Documentation**: `docs/epic-1.9-structured-logger-telemetry.md`
+
+---
+
 ### In Progress
 
-#### 🔄 Epic 1.9: Observability: Structured Logger + Privacy-First Telemetry (P1)
+#### 🔄 Epic 1.10: Test Coverage Expansion (P2)
 **Status**: Next in queue
 
-**Goal**: Production-grade logging and telemetry with privacy safeguards
+**Goal**: Increase test coverage across packages
 
 ---
 
 ### Upcoming Epics
 
-- [ ] **Epic 1.9**: Observability: Structured Logger + Privacy-First Telemetry (P1)
 - [ ] **Epic 1.10**: Test Coverage Expansion
 
 ---
@@ -176,14 +195,14 @@
 
 ### Statistics
 
-**Epics Completed**: 8/10 (80%)  
-**Total Tests Added**: 262 (13 + 25 + 42 + 16 + 12 + 41 + 69 + 36 + 8 existing)  
-**Test Success Rate**: 99.6% (261/262 passing, 1 skipped)  
-**Documentation**: 7 epic reports + 1 tracking file
+**Epics Completed**: 9/10 (90%)  
+**Total Tests Added**: 291 (13 + 25 + 42 + 16 + 12 + 41 + 69 + 36 + 29 + 8 existing)  
+**Test Success Rate**: 99.7% (290/291 passing, 1 skipped)  
+**Documentation**: 8 epic reports + 1 tracking file
 
 ### Files Created/Modified
 
-**Created** (44 files):
+**Created** (48 files):
 - `docs/epic-1.1-beam-search-implementation.md`
 - `docs/epic-1.2-transaction-coordinator-implementation.md`
 - `docs/epic-1.3-domain-serializer-implementation.md`
@@ -191,6 +210,7 @@
 - `docs/epic-1.5-circuit-breaker-implementation.md`
 - `docs/epic-1.6-structured-errors-result-type.md`
 - `docs/epic-1.8-clock-injection.md`
+- `docs/epic-1.9-structured-logger-telemetry.md`
 - `packages/benchmarks/src/run-stacking-bench.ts`
 - `packages/benchmarks/src/stacking-engine-bench.ts`
 - `packages/benefits/src/stacking/stacking-engine.spec.ts`
