@@ -476,3 +476,7 @@ export * from './message-schemas.js';
 
 // Circuit Breaker for API resilience
 export * from './circuit-breaker.js';
+
+// Result type and error handling
+export * from './result.js';
+export * from './errors.js';

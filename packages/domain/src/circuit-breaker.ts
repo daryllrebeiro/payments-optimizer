@@ -8,6 +8,8 @@
  * - HALF_OPEN: Testing if service recovered, limited requests pass through
  */
 
+import { CircuitBreakerOpenError } from './errors';
+
 export enum CircuitState {
   CLOSED = 'CLOSED',
   OPEN = 'OPEN',
@@ -79,7 +81,9 @@ export class CircuitBreaker {
         throw new CircuitBreakerOpenError(
           `Circuit breaker "${this.config.name}" is OPEN. Next attempt at ${new Date(
             this.nextAttemptTime
-          ).toISOString()}`
+          ).toISOString()}`,
+          this.config.name,
+          new Date(this.nextAttemptTime)
         );
       }
       // Timeout expired, transition to half-open
@@ -221,16 +225,6 @@ export class CircuitBreaker {
    */
   forceClosed(): void {
     this.transitionToClosed();
-  }
-}
-
-/**
- * Error thrown when circuit breaker is open
- */
-export class CircuitBreakerOpenError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'CircuitBreakerOpenError';
   }
 }
 
