@@ -473,3 +473,6 @@ export interface SavingsEntry {
 // Serialization and Message Schemas
 export * from './serialization.js';
 export * from './message-schemas.js';
+
+// Circuit Breaker for API resilience
+export * from './circuit-breaker.js';
