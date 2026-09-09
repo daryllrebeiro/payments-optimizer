@@ -36,11 +36,10 @@ describe('BurnVoucherOperation', () => {
   it('should burn voucher successfully', async () => {
     await voucherRepo.put(testVoucher);
 
-    const operation = new BurnVoucherOperation(
-      voucherRepo,
-      'voucher-1',
-      { amountMinor: 50000n, currency: 'INR' }
-    );
+    const operation = new BurnVoucherOperation(voucherRepo, 'voucher-1', {
+      amountMinor: 50000n,
+      currency: 'INR',
+    });
 
     const result = await operation.execute();
 
@@ -53,11 +52,10 @@ describe('BurnVoucherOperation', () => {
   });
 
   it('should fail if voucher not found', async () => {
-    const operation = new BurnVoucherOperation(
-      voucherRepo,
-      'non-existent',
-      { amountMinor: 50000n, currency: 'INR' }
-    );
+    const operation = new BurnVoucherOperation(voucherRepo, 'non-existent', {
+      amountMinor: 50000n,
+      currency: 'INR',
+    });
 
     const result = await operation.execute();
 
@@ -83,11 +81,10 @@ describe('BurnVoucherOperation', () => {
   it('should rollback voucher burn successfully', async () => {
     await voucherRepo.put(testVoucher);
 
-    const operation = new BurnVoucherOperation(
-      voucherRepo,
-      'voucher-1',
-      { amountMinor: 50000n, currency: 'INR' }
-    );
+    const operation = new BurnVoucherOperation(voucherRepo, 'voucher-1', {
+      amountMinor: 50000n,
+      currency: 'INR',
+    });
 
     const result = await operation.execute();
     expect(result.success).toBe(true);
@@ -108,11 +105,10 @@ describe('BurnVoucherOperation', () => {
     await voucherRepo.put(testVoucher);
 
     // First burn: 30000
-    const op1 = new BurnVoucherOperation(
-      voucherRepo,
-      'voucher-1',
-      { amountMinor: 30000n, currency: 'INR' }
-    );
+    const op1 = new BurnVoucherOperation(voucherRepo, 'voucher-1', {
+      amountMinor: 30000n,
+      currency: 'INR',
+    });
     const result1 = await op1.execute();
     expect(result1.success).toBe(true);
 
@@ -120,11 +116,10 @@ describe('BurnVoucherOperation', () => {
     expect(voucher?.remainingValue.amountMinor).toBe('70000');
 
     // Second burn: 20000
-    const op2 = new BurnVoucherOperation(
-      voucherRepo,
-      'voucher-1',
-      { amountMinor: 20000n, currency: 'INR' }
-    );
+    const op2 = new BurnVoucherOperation(voucherRepo, 'voucher-1', {
+      amountMinor: 20000n,
+      currency: 'INR',
+    });
     const result2 = await op2.execute();
     expect(result2.success).toBe(true);
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- legacy explicit-any usage; remove when typed */
 /**
  * Enhanced Savings Repository with Index-based Queries
  * Epic 1.4: Optimized queries using IndexedDB indexes
@@ -47,6 +48,15 @@ export interface SavingsQueryFilter {
 
 /**
  * Enhanced savings repository with optimized index-based queries
+ *
+ * F10: the canonical record shape for the savings store is the RAW entry
+ * (top-level id/timestamp/merchantId/...). The V2 indexes are declared on
+ * those top-level keys, and every writer/reader in the product uses this
+ * shape. The base IndexedDbRepository wraps entities in a VersionedEntity
+ * envelope, which would make them invisible to the indexes Ã¢â‚¬â€ so put/get are
+ * overridden here to keep one consistent, queryable shape. (Savings entries
+ * are derived data; the integrity-hash wrapper serves the profile store,
+ * not this one.)
  */
 export class SavingsRepository extends IndexedDbRepository<SavingsEntry> {
   constructor() {
@@ -66,30 +76,67 @@ export class SavingsRepository extends IndexedDbRepository<SavingsEntry> {
   }
 
   /**
-   * Helper to unwrap entities (handles both VersionedEntity and direct entities)
+   * F10: write the raw entry (no VersionedEntity wrapper) so the V2
+   * indexes (top-level merchantId/timestamp) cover every record.
    */
-  private unwrapEntities(entities: any[]): SavingsEntry[] {
-    const results: SavingsEntry[] = [];
-    
-    for (const entity of entities) {
-      if (entity) {
-        // Check if it's wrapped in VersionedEntity structure
-        if (entity.data) {
-          results.push(entity.data as SavingsEntry);
-        } else {
-          // Direct entity (not wrapped)
-          results.push(entity as SavingsEntry);
-        }
-      }
+  async put(entity: SavingsEntry): Promise<void> {
+    const db = await this.openDb();
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction('savings', 'readwrite');
+        const request = tx.objectStore('savings').put(entity);
+        request.onerror = () => reject(request.error);
+        tx.oncomplete = () => resolve();
+        tx.onabort = () => reject(tx.error ?? new Error('put transaction aborted'));
+      });
+    } finally {
+      db.close();
     }
-    
-    return results;
+  }
+
+  /**
+   * F10: read the raw entry. Records written by the (pre-remediation)
+   * hand-rolled service-worker path are already raw, so this single read
+   * path covers all historical data.
+   */
+  async get(id: string): Promise<SavingsEntry | undefined> {
+    const db = await this.openDb();
+    try {
+      return await new Promise<SavingsEntry | undefined>((resolve, reject) => {
+        const tx = db.transaction('savings', 'readonly');
+        const request = tx.objectStore('savings').get(id);
+        request.onsuccess = () => resolve(request.result as SavingsEntry | undefined);
+        request.onerror = () => reject(request.error);
+        tx.oncomplete = () => db.close();
+      });
+    } finally {
+      db.close();
+    }
+  }
+
+  /**
+   * F10: list raw entries (the base implementation unwraps a
+   * VersionedEntity envelope that this store does not use).
+   */
+  async list(): Promise<SavingsEntry[]> {
+    const db = await this.openDb();
+    try {
+      return await new Promise<SavingsEntry[]>((resolve, reject) => {
+        const tx = db.transaction('savings', 'readonly');
+        const request = tx.objectStore('savings').getAll();
+        request.onsuccess = () => resolve((request.result ?? []) as SavingsEntry[]);
+        request.onerror = () => reject(request.error);
+        tx.oncomplete = () => db.close();
+      });
+    } finally {
+      db.close();
+    }
   }
 
   /**
    * Query savings by merchant and date range using compound index
    * Optimized: O(log n + k) where k is result size
-   * 
+   *
    * @param merchantId - Merchant ID to filter by
    * @param startDate - Start timestamp (inclusive)
    * @param endDate - End timestamp (inclusive)
@@ -100,27 +147,22 @@ export class SavingsRepository extends IndexedDbRepository<SavingsEntry> {
     startDate: number,
     endDate: number
   ): Promise<SavingsEntry[]> {
-    const db = await (this as any).openDb();
-    
+    const db = await this.openDb();
+
     return new Promise((resolve, reject) => {
       const transaction = db.transaction('savings', 'readonly');
       const store = transaction.objectStore('savings');
       const index = store.index('by_merchant_timestamp');
 
       // Use compound index with IDBKeyRange
-      const range = IDBKeyRange.bound(
-        [merchantId, startDate],
-        [merchantId, endDate],
-        false,
-        false
-      );
+      const range = IDBKeyRange.bound([merchantId, startDate], [merchantId, endDate], false, false);
 
       const request = index.getAll(range);
 
       request.onerror = () => reject(request.error);
       request.onsuccess = () => {
-        const entities = (request.result || []) as any[];
-        resolve(this.unwrapEntities(entities));
+        const entities = (request.result || []) as SavingsEntry[];
+        resolve(entities);
       };
 
       transaction.oncomplete = () => db.close();
@@ -130,14 +172,14 @@ export class SavingsRepository extends IndexedDbRepository<SavingsEntry> {
   /**
    * Query savings by date range using timestamp index
    * Optimized: O(log n + k) where k is result size
-   * 
+   *
    * @param startDate - Start timestamp (inclusive)
    * @param endDate - End timestamp (inclusive)
    * @returns Array of savings entries
    */
   async queryByDateRange(startDate: number, endDate: number): Promise<SavingsEntry[]> {
-    const db = await (this as any).openDb();
-    
+    const db = await this.openDb();
+
     return new Promise((resolve, reject) => {
       const transaction = db.transaction('savings', 'readonly');
       const store = transaction.objectStore('savings');
@@ -148,8 +190,8 @@ export class SavingsRepository extends IndexedDbRepository<SavingsEntry> {
 
       request.onerror = () => reject(request.error);
       request.onsuccess = () => {
-        const entities = (request.result || []) as any[];
-        resolve(this.unwrapEntities(entities));
+        const entities = (request.result || []) as SavingsEntry[];
+        resolve(entities);
       };
 
       transaction.oncomplete = () => db.close();
@@ -159,13 +201,13 @@ export class SavingsRepository extends IndexedDbRepository<SavingsEntry> {
   /**
    * Query savings by merchant using merchant index
    * Optimized: O(log n + k) where k is result size
-   * 
+   *
    * @param merchantId - Merchant ID to filter by
    * @returns Array of savings entries
    */
   async queryByMerchant(merchantId: string): Promise<SavingsEntry[]> {
-    const db = await (this as any).openDb();
-    
+    const db = await this.openDb();
+
     return new Promise((resolve, reject) => {
       const transaction = db.transaction('savings', 'readonly');
       const store = transaction.objectStore('savings');
@@ -175,8 +217,8 @@ export class SavingsRepository extends IndexedDbRepository<SavingsEntry> {
 
       request.onerror = () => reject(request.error);
       request.onsuccess = () => {
-        const entities = (request.result || []) as any[];
-        resolve(this.unwrapEntities(entities));
+        const entities = (request.result || []) as SavingsEntry[];
+        resolve(entities);
       };
 
       transaction.oncomplete = () => db.close();
@@ -185,7 +227,7 @@ export class SavingsRepository extends IndexedDbRepository<SavingsEntry> {
 
   /**
    * Query with complex filter (uses indexes where possible, then filters)
-   * 
+   *
    * @param filter - Query filter
    * @returns Array of savings entries matching filter
    */
@@ -215,15 +257,15 @@ export class SavingsRepository extends IndexedDbRepository<SavingsEntry> {
     if (filter.minSavings !== undefined || filter.maxSavings !== undefined) {
       results = results.filter((entry) => {
         const savingsAmount = BigInt(entry.savings.amountMinor);
-        
+
         if (filter.minSavings !== undefined && savingsAmount < filter.minSavings) {
           return false;
         }
-        
+
         if (filter.maxSavings !== undefined && savingsAmount > filter.maxSavings) {
           return false;
         }
-        
+
         return true;
       });
     }
@@ -234,7 +276,7 @@ export class SavingsRepository extends IndexedDbRepository<SavingsEntry> {
   /**
    * Get aggregate statistics for a merchant
    * Optimized: Uses merchant index
-   * 
+   *
    * @param merchantId - Merchant ID
    * @returns Aggregate statistics
    */

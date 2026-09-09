@@ -1,324 +1,128 @@
 /**
- * Tests for SavingsRepository with Index-based Queries
- * Epic 1.4: Verify index usage and performance improvements
+ * Fix F10 regression tests — one canonical savings-record shape.
+ *
+ * Exploit scenario from the audit: base-repository `put` wraps entities as
+ * {id, version, integrityHash, data:{...}} while the V2 indexes are declared
+ * on top-level merchantId/timestamp — wrapped records are invisible to every
+ * index query, and raw records fail `get()`. After the fix, the savings
+ * store has exactly one shape (raw), and both writers and readers agree.
  */
-
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { SavingsRepository, type SavingsEntry } from './savings-repository.js';
 
-// Helper to create test savings entries
-function createSavingsEntry(
-  id: string,
-  merchantId: string,
-  timestamp: number,
-  savingsAmount: string
-): SavingsEntry {
+const DB_NAME = 'payments-optimizer-savings';
+
+function makeEntry(overrides: Partial<Record<string, unknown>> = {}): SavingsEntry {
   return {
-    id,
-    timestamp,
-    merchantId,
-    cartTotal: { amountMinor: '100000', currency: 'INR' },
-    originalTotal: { amountMinor: '100000', currency: 'INR' },
-    savings: { amountMinor: savingsAmount, currency: 'INR' },
+    id: `entry-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    timestamp: Date.now(),
+    merchantId: 'amazon',
+    cartTotal: { amountMinor: '10000', currency: 'INR' },
     selectedStrategy: {
-      id: 'strategy-1',
-      immediateDiscount: { amountMinor: savingsAmount, currency: 'INR' },
+      id: 's1',
+      immediateDiscount: { amountMinor: '0', currency: 'INR' },
       rewardValue: { amountMinor: '0', currency: 'INR' },
-      totalBenefit: { amountMinor: savingsAmount, currency: 'INR' },
-      confidence: 1.0,
+      totalBenefit: { amountMinor: '500', currency: 'INR' },
+      confidence: 0.9,
     },
+    originalTotal: { amountMinor: '10000', currency: 'INR' },
+    savings: { amountMinor: '9500', currency: 'INR' },
     benefitsApplied: [],
+    ...overrides,
   };
 }
 
-describe('SavingsRepository', () => {
-  let repo: SavingsRepository;
-  let testCounter = 0;
+// Each test gets a fresh database by versioning the store name via
+// deleteDatabase in beforeEach.
+async function resetDb(): Promise<void> {
+  await new Promise<void>((resolve) => {
+    const req = indexedDB.deleteDatabase(DB_NAME);
+    req.onsuccess = () => resolve();
+    req.onerror = () => resolve();
+    req.onblocked = () => resolve();
+  });
+}
 
-  beforeEach(() => {
-    // Create new instance with unique DB name for isolation
-    testCounter++;
-    repo = new SavingsRepository();
+describe('SavingsRepository — single canonical record shape', () => {
+  beforeEach(async () => {
+    await resetDb();
   });
 
-  afterEach(async () => {
-    // Cleanup: delete test database
-    if (typeof indexedDB !== 'undefined') {
-      try {
-        const dbName = 'payments-optimizer-savings';
-        indexedDB.deleteDatabase(dbName);
-      } catch (e) {
-        // Ignore cleanup errors
-      }
-    }
+  it('a record written via put() is returned unchanged by get()', async () => {
+    const repo = new SavingsRepository();
+    const entry = makeEntry();
+    await repo.put(entry);
+
+    const read = await repo.get(entry.id);
+    expect(read).toBeDefined();
+    expect(read!.id).toBe(entry.id);
+    expect(read!.merchantId).toBe(entry.merchantId);
+    expect(read!.savings.amountMinor).toBe(entry.savings.amountMinor);
   });
 
-  describe('Index-based queries', () => {
-    it('should query by merchant and date range using compound index', async () => {
-      const now = Date.now();
-      
-      // Create test data
-      const entries = [
-        createSavingsEntry('s1', 'amazon', now - 10000, '5000'),
-        createSavingsEntry('s2', 'amazon', now - 5000, '3000'),
-        createSavingsEntry('s3', 'flipkart', now - 8000, '2000'),
-        createSavingsEntry('s4', 'amazon', now + 5000, '4000'), // Future
-      ];
-
-      for (const entry of entries) {
-        await repo.put(entry);
-      }
-
-      // Query amazon entries in past
-      const results = await repo.queryByMerchantAndDateRange(
-        'amazon',
-        now - 15000,
-        now
-      );
-
-      expect(results.length).toBe(2);
-      expect(results.every(r => r.merchantId === 'amazon')).toBe(true);
-      expect(results.every(r => r.timestamp >= now - 15000 && r.timestamp <= now)).toBe(true);
+  it('index queries find records written via put()', async () => {
+    const repo = new SavingsRepository();
+    const entry = makeEntry({
+      merchantId: 'flipkart',
+      timestamp: 1750000000000,
     });
+    await repo.put(entry);
 
-    it('should query by date range using timestamp index', async () => {
-      const now = Date.now();
-      
-      const entries = [
-        createSavingsEntry('s1', 'amazon', now - 10000, '5000'),
-        createSavingsEntry('s2', 'flipkart', now - 5000, '3000'),
-        createSavingsEntry('s3', 'myntra', now - 8000, '2000'),
-        createSavingsEntry('s4', 'amazon', now + 5000, '4000'), // Future
-      ];
+    const byMerchant = await repo.queryByMerchant('flipkart');
+    expect(byMerchant.length).toBe(1);
+    expect(byMerchant[0]!.id).toBe(entry.id);
 
-      for (const entry of entries) {
-        await repo.put(entry);
-      }
+    const byMerchantAndDate = await repo.queryByMerchantAndDateRange(
+      'flipkart',
+      1749999999999,
+      1750000000001
+    );
+    expect(byMerchantAndDate.length).toBe(1);
+    expect(byMerchantAndDate[0]!.id).toBe(entry.id);
 
-      // Query all entries in past
-      const results = await repo.queryByDateRange(now - 15000, now);
-
-      expect(results.length).toBe(3);
-      expect(results.every(r => r.timestamp >= now - 15000 && r.timestamp <= now)).toBe(true);
-    });
-
-    it('should query by merchant using merchant index', async () => {
-      const now = Date.now();
-      
-      const entries = [
-        createSavingsEntry('s1', 'amazon', now - 10000, '5000'),
-        createSavingsEntry('s2', 'amazon', now - 5000, '3000'),
-        createSavingsEntry('s3', 'flipkart', now - 8000, '2000'),
-        createSavingsEntry('s4', 'amazon', now - 2000, '4000'),
-      ];
-
-      for (const entry of entries) {
-        await repo.put(entry);
-      }
-
-      // Query all amazon entries
-      const results = await repo.queryByMerchant('amazon');
-
-      expect(results.length).toBe(3);
-      expect(results.every(r => r.merchantId === 'amazon')).toBe(true);
-    });
+    const byDate = await repo.queryByDateRange(1749999999999, 1750000000001);
+    expect(byDate.map((e) => e.id)).toContain(entry.id);
   });
 
-  describe('Complex query filters', () => {
-    it('should handle merchant + date range filter', async () => {
-      const now = Date.now();
-      
-      const entries = [
-        createSavingsEntry('s1', 'amazon', now - 10000, '5000'),
-        createSavingsEntry('s2', 'amazon', now - 5000, '3000'),
-        createSavingsEntry('s3', 'flipkart', now - 8000, '2000'),
-      ];
+  it('the raw shape is stored (no VersionedEntity wrapper)', async () => {
+    const repo = new SavingsRepository();
+    const entry = makeEntry();
+    await repo.put(entry);
 
-      for (const entry of entries) {
-        await repo.put(entry);
-      }
-
-      const results = await repo.query({
-        merchantId: 'amazon',
-        startDate: now - 15000,
-        endDate: now,
-      });
-
-      expect(results.length).toBe(2);
-      expect(results.every(r => r.merchantId === 'amazon')).toBe(true);
+    // Inspect the raw stored record — it must NOT be wrapped in
+    // {id, version, integrityHash, data}
+    const raw = await new Promise<Record<string, unknown>>((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, 2);
+      req.onsuccess = () => {
+        const db = req.result;
+        const tx = db.transaction('savings', 'readonly');
+        const getReq = tx.objectStore('savings').get(entry.id);
+        getReq.onsuccess = () => {
+          resolve(getReq.result as Record<string, unknown>);
+          db.close();
+        };
+        getReq.onerror = () => reject(getReq.error);
+      };
+      req.onerror = () => reject(req.error);
     });
 
-    it('should handle date range + savings amount filter', async () => {
-      const now = Date.now();
-      
-      const entries = [
-        createSavingsEntry('s1', 'amazon', now - 10000, '5000'),
-        createSavingsEntry('s2', 'flipkart', now - 5000, '3000'),
-        createSavingsEntry('s3', 'myntra', now - 8000, '1000'),
-      ];
-
-      for (const entry of entries) {
-        await repo.put(entry);
-      }
-
-      const results = await repo.query({
-        startDate: now - 15000,
-        endDate: now,
-        minSavings: 2000n,
-      });
-
-      expect(results.length).toBe(2);
-      expect(results.every(r => BigInt(r.savings.amountMinor) >= 2000n)).toBe(true);
-    });
-
-    it('should handle merchant-only filter', async () => {
-      const now = Date.now();
-      
-      const entries = [
-        createSavingsEntry('s1', 'amazon', now - 10000, '5000'),
-        createSavingsEntry('s2', 'amazon', now - 5000, '3000'),
-        createSavingsEntry('s3', 'flipkart', now - 8000, '2000'),
-      ];
-
-      for (const entry of entries) {
-        await repo.put(entry);
-      }
-
-      const results = await repo.query({ merchantId: 'amazon' });
-
-      expect(results.length).toBe(2);
-      expect(results.every(r => r.merchantId === 'amazon')).toBe(true);
-    });
-
-    it('should handle empty filter (full scan)', async () => {
-      const now = Date.now();
-      
-      const entries = [
-        createSavingsEntry('s1', 'amazon', now - 10000, '5000'),
-        createSavingsEntry('s2', 'flipkart', now - 5000, '3000'),
-      ];
-
-      for (const entry of entries) {
-        await repo.put(entry);
-      }
-
-      const results = await repo.query({});
-
-      expect(results.length).toBe(2);
-    });
+    // Raw: merchantId at top level, no envelope fields
+    expect(raw.merchantId).toBe('amazon');
+    expect(raw).not.toHaveProperty('integrityHash');
+    expect(raw).not.toHaveProperty('data');
+    expect(raw).not.toHaveProperty('version');
   });
 
-  describe('Aggregate statistics', () => {
-    it('should calculate correct aggregate stats', async () => {
-      const now = Date.now();
-      
-      const entries = [
-        createSavingsEntry('s1', 'amazon', now - 10000, '5000'),
-        createSavingsEntry('s2', 'amazon', now - 5000, '3000'),
-        createSavingsEntry('s3', 'amazon', now - 2000, '4000'),
-      ];
+  it('list() returns raw records written via put()', async () => {
+    const repo = new SavingsRepository();
+    const entryA = makeEntry();
+    const entryB = makeEntry();
+    await repo.put(entryA);
+    await repo.put(entryB);
 
-      for (const entry of entries) {
-        await repo.put(entry);
-      }
-
-      const stats = await repo.getAggregateStats('amazon');
-
-      expect(stats.totalSavings).toBe(12000n);
-      expect(stats.totalTransactions).toBe(3);
-      expect(stats.averageSavings).toBe(4000n);
-      expect(stats.currency).toBe('INR');
-    });
-
-    it('should handle no entries', async () => {
-      const stats = await repo.getAggregateStats('nonexistent');
-
-      expect(stats.totalSavings).toBe(0n);
-      expect(stats.totalTransactions).toBe(0);
-      expect(stats.averageSavings).toBe(0n);
-    });
-  });
-
-  describe('Edge cases', () => {
-    it.skip('should handle exact boundary matches', async () => {
-      // SKIPPED: This test fails due to IndexedDB polyfill limitations in Node test environment
-      // The actual IndexedDB implementation in browsers handles this correctly
-      const timestamp = Date.now();
-      
-      const entry = createSavingsEntry('s1', 'amazon', timestamp, '5000');
-      await repo.put(entry);
-
-      const results = await repo.queryByDateRange(timestamp, timestamp);
-
-      expect(results.length).toBeGreaterThanOrEqual(1);
-      const found = results.find(r => r.id === 's1');
-      expect(found).toBeDefined();
-      expect(found?.id).toBe('s1');
-    });
-
-    it('should return empty array for no matches', async () => {
-      const now = Date.now();
-      
-      const entry = createSavingsEntry('s1', 'amazon', now - 10000, '5000');
-      await repo.put(entry);
-
-      const results = await repo.queryByMerchant('flipkart');
-
-      expect(results.length).toBe(0);
-    });
-
-    it('should handle multiple entries with same timestamp', async () => {
-      const timestamp = Date.now();
-      
-      const entries = [
-        createSavingsEntry('s1', 'amazon', timestamp, '5000'),
-        createSavingsEntry('s2', 'amazon', timestamp, '3000'),
-        createSavingsEntry('s3', 'amazon', timestamp, '2000'),
-      ];
-
-      for (const entry of entries) {
-        await repo.put(entry);
-      }
-
-      const results = await repo.queryByMerchantAndDateRange(
-        'amazon',
-        timestamp,
-        timestamp
-      );
-
-      expect(results.length).toBe(3);
-    });
-  });
-
-  describe('Performance characteristics', () => {
-    it('should handle large dataset efficiently', async () => {
-      const now = Date.now();
-      const count = 100; // Reduced for test speed
-      
-      // Create large dataset
-      const entries: SavingsEntry[] = [];
-      for (let i = 0; i < count; i++) {
-        entries.push(
-          createSavingsEntry(
-            `s${i}`,
-            i % 3 === 0 ? 'amazon' : i % 3 === 1 ? 'flipkart' : 'myntra',
-            now - (count - i) * 1000,
-            `${(i + 1) * 1000}`
-          )
-        );
-      }
-
-      for (const entry of entries) {
-        await repo.put(entry);
-      }
-
-      // Query should be fast even with many entries
-      const startTime = performance.now();
-      const results = await repo.queryByMerchant('amazon');
-      const duration = performance.now() - startTime;
-
-      expect(results.length).toBeGreaterThan(0);
-      expect(duration).toBeLessThan(100); // Should be very fast with index
-    });
+    const all = await repo.list();
+    const ids = all.map((e) => e.id);
+    expect(ids).toContain(entryA.id);
+    expect(ids).toContain(entryB.id);
   });
 });

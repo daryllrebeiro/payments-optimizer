@@ -9,6 +9,8 @@
 
 export * from './base-repository.js';
 
+export * from './durable-task-queue.js';
+
 // Export transaction coordinator and operations
 export * from './transaction-coordinator.js';
 export * from './operations.js';
@@ -98,8 +100,10 @@ export class MigrationRunner {
 
       // Apply each migration
       for (const migration of migrationsToApply) {
-        console.log(`[MigrationRunner] Applying migration v${migration.version}: ${migration.description}`);
-        
+        console.log(
+          `[MigrationRunner] Applying migration v${migration.version}: ${migration.description}`
+        );
+
         try {
           migration.up(db);
           result.migrationsApplied.push(migration.version);
@@ -154,8 +158,10 @@ export class MigrationRunner {
           throw new Error(`Migration v${migration.version} does not have a rollback function`);
         }
 
-        console.log(`[MigrationRunner] Rolling back migration v${migration.version}: ${migration.description}`);
-        
+        console.log(
+          `[MigrationRunner] Rolling back migration v${migration.version}: ${migration.description}`
+        );
+
         try {
           migration.down(db);
           result.migrationsApplied.push(migration.version);
@@ -167,7 +173,9 @@ export class MigrationRunner {
       }
 
       result.success = true;
-      console.log(`[MigrationRunner] Successfully rolled back from v${fromVersion} to v${toVersion}`);
+      console.log(
+        `[MigrationRunner] Successfully rolled back from v${fromVersion} to v${toVersion}`
+      );
     } catch (error) {
       result.success = false;
       result.error = error instanceof Error ? error : new Error(String(error));

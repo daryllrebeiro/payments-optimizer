@@ -22,7 +22,9 @@ describe('TransactionCoordinator', () => {
       const mockOperation: Operation<string> = {
         id: 'op-1',
         description: 'Test operation',
-        execute: vi.fn().mockResolvedValue({ success: true, data: 'result', rollbackData: 'undo-data' }),
+        execute: vi
+          .fn()
+          .mockResolvedValue({ success: true, data: 'result', rollbackData: 'undo-data' }),
         rollback: vi.fn().mockResolvedValue(undefined),
       };
 
@@ -237,7 +239,7 @@ describe('TransactionCoordinator', () => {
         id: 'slow-op',
         description: 'Slow operation',
         execute: vi.fn(async () => {
-          await new Promise(resolve => setTimeout(resolve, 100)); // Slower than timeout
+          await new Promise((resolve) => setTimeout(resolve, 100)); // Slower than timeout
           return { success: true, rollbackData: 'data' };
         }),
         rollback: vi.fn(),
@@ -333,12 +335,8 @@ describe('TransactionCoordinator', () => {
 
       await coordinator.executeAtomically([op1, op2], { verbose: true });
 
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('initiating rollback')
-      );
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Rolling back: First')
-      );
+      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('initiating rollback'));
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('Rolling back: First'));
 
       consoleLogSpy.mockRestore();
       consoleWarnSpy.mockRestore();

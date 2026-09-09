@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- legacy explicit-any usage; remove when typed */
 /**
  * Transaction Coordinator for Atomic Multi-Step Operations
  * Epic 1.2: Ensures atomic voucher burn + savings write + profile update
- * 
+ *
  * Provides ACID-like guarantees for multi-step operations with compensating rollback.
  */
 
@@ -90,7 +91,7 @@ export class TransactionCoordinator {
   /**
    * Executes a sequence of operations atomically.
    * If any operation fails, all previously completed operations are rolled back.
-   * 
+   *
    * @param operations - Ordered list of operations to execute
    * @param options - Transaction execution options
    * @returns Transaction result with all operation results or error
@@ -150,9 +151,8 @@ export class TransactionCoordinator {
       // All operations succeeded
       return {
         success: true,
-        results: completedResults.map(r => r.data as T),
+        results: completedResults.map((r) => r.data as T),
       };
-
     } catch (error) {
       // Transaction failed - roll back all completed operations in reverse order
       if (verbose) {
@@ -161,14 +161,15 @@ export class TransactionCoordinator {
 
       await this.rollbackOperations(operations, completedResults, verbose);
 
-      const transactionError = error instanceof TransactionError
-        ? error
-        : new TransactionError(
-            'Unexpected error during transaction execution',
-            'unknown',
-            error instanceof Error ? error : new Error(String(error)),
-            completedResults
-          );
+      const transactionError =
+        error instanceof TransactionError
+          ? error
+          : new TransactionError(
+              'Unexpected error during transaction execution',
+              'unknown',
+              error instanceof Error ? error : new Error(String(error)),
+              completedResults
+            );
 
       return {
         success: false,

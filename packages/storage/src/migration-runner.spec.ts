@@ -20,7 +20,7 @@ class MockIDBDatabase {
 
   deleteObjectStore(name: string) {
     this.stores.delete(name);
-    this.objectStoreNames = this.objectStoreNames.filter(n => n !== name);
+    this.objectStoreNames = this.objectStoreNames.filter((n) => n !== name);
   }
 
   transaction(storeNames: string | string[], mode: 'readonly' | 'readwrite') {
@@ -45,7 +45,11 @@ class MockObjectStore {
     this.autoIncrement = options?.autoIncrement;
   }
 
-  createIndex(name: string, keyPath: string | string[], options?: { unique?: boolean; multiEntry?: boolean }) {
+  createIndex(
+    name: string,
+    keyPath: string | string[],
+    options?: { unique?: boolean; multiEntry?: boolean }
+  ) {
     const index = new MockIndex(name, keyPath, options);
     this.indexes.set(name, index);
     this.indexNames.push(name);
@@ -54,7 +58,7 @@ class MockObjectStore {
 
   deleteIndex(name: string) {
     this.indexes.delete(name);
-    this.indexNames = this.indexNames.filter(n => n !== name);
+    this.indexNames = this.indexNames.filter((n) => n !== name);
   }
 
   index(name: string) {
@@ -400,7 +404,7 @@ describe('MigrationRunner', () => {
       const upResult = runner.migrate(mockDb as unknown as IDBDatabase, 1, 2);
       expect(upResult.success).toBe(true);
       expect(mockDb.objectStoreNames).toContain('savings');
-      
+
       const store = mockDb.objectStore('savings');
       expect(store?.indexNames).toContain('by_merchant');
       expect(store?.indexNames).toContain('by_timestamp');
@@ -421,7 +425,9 @@ describe('MigrationRunner', () => {
         up: (db: IDBDatabase) => {
           const transaction = db.transaction('savings', 'readwrite');
           const store = transaction.objectStore('savings');
-          store?.createIndex('by_merchant_timestamp', ['merchantId', 'timestamp'], { unique: false });
+          store?.createIndex('by_merchant_timestamp', ['merchantId', 'timestamp'], {
+            unique: false,
+          });
         },
         down: (db: IDBDatabase) => {
           const transaction = db.transaction('savings', 'readwrite');

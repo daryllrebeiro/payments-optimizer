@@ -33,7 +33,7 @@ function computeIntegrityHash(data: unknown): string {
   let hash = 0;
   for (let i = 0; i < serialized.length; i++) {
     const char = serialized.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash; // Convert to 32-bit integer
   }
   return btoa(hash.toString());
@@ -113,7 +113,7 @@ export class IndexedDbRepository<T> implements StorageRepository<T> {
     private onUpgrade?: (db: IDBDatabase, oldVersion: number, newVersion: number) => void
   ) {}
 
-  private openDb(): Promise<IDBDatabase> {
+  protected openDb(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
       if (typeof globalThis === 'undefined' || !globalThis.indexedDB) {
         reject(new Error('IndexedDB is not supported in this environment.'));

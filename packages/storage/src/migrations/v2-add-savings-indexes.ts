@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- legacy explicit-any usage; remove when typed */
 /**
  * Migration V2: Add Indexes to Savings Store
  * Epic 1.4: Improves query performance from >500ms to <50ms for 10k entries
@@ -15,7 +16,7 @@ export const addSavingsIndexesMigration: Migration = {
   up: (db: IDBDatabase) => {
     // The store name is just 'savings', not 'payments-optimizer-savings'
     const storeName = 'savings';
-    
+
     // Check if savings store exists
     if (!db.objectStoreNames.contains(storeName)) {
       throw new Error('Savings store does not exist. Cannot add indexes.');
@@ -59,7 +60,7 @@ export const addSavingsIndexesMigration: Migration = {
   down: (db: IDBDatabase) => {
     // Rollback: remove the indexes
     const storeName = 'savings';
-    
+
     if (!db.objectStoreNames.contains(storeName)) {
       console.warn('[Migration V2 Rollback] Savings store does not exist');
       return;
