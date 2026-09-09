@@ -25,7 +25,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    minify: false, // Keep readable for review; enable before Web Store submission
+    minify: true, // Fix S-09: store builds minified (review builds use --minify false explicitly)
     rollupOptions: {
       input: {
         background: resolve(__dirname, 'src/background/service-worker.ts'),

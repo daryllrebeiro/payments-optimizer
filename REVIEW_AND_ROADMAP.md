@@ -1,12 +1,12 @@
 # PaymentsOptimizer - Architectural Review & Strategic Roadmap
 
 **Reviewed By**: Principal Software Architect & Staff Software Engineer
-**Review Date**: September 7, 2026 (updated post-green-gate)
-**Project Version**: v1.0.0-rc (green gate achieved, commit `b62180f`)
+**Review Date**: September 9, 2026
+**Project Version**: v1.0.0-rc (post-remediation)
 **Maturity Stage**: Active Beta → Production Candidate
-**Basis**: Live verification against `origin/main` at `b62180f` — the six-commit stabilization sequence completed on 2026-09-07
+**Basis**: Live verification against `origin/main` at `842a920` — `pnpm -r typecheck` green across all workspaces, `pnpm test` **37 files / 455 passed / 2 skipped / 0 failed**. This document supersedes the September 7 review (written at `b62180f`, 386 tests); the delta is the 23-finding adversarial-remediation sequence (`6b816ee`, `62c2f4a`, `c9878db`, `e87957b`, `842a920`) plus the F19–F23 spec amendments in `docs/audit-remediation-F19-F23.md`.
 
-> **Note**: This document supersedes the September 5 review. That version described Phase 1 work (beam search, transaction coordinator, serializer, etc.) as _future_ debt. All ten Phase 1 epics have since been **implemented** (see `PHASES_COMPLETED.md` and `docs/PHASE_1_AUDIT.md`), and as of the stabilization sweep on 2026-09-07 the build gate is **green**: `pnpm typecheck` (62 errors fixed), `pnpm test` (386 passed / 3 skipped / 0 failed, 27 files), and `pnpm build` all pass. An earlier 2026-09-07 revision of this document described the build as red; it is corrected here.
+> **How to read this**: every claim cites a file and line verified in-tree on the review date. No aspirational statements — if it is not imported, tested, and gated in CI, it is listed as debt, not as done.
 
 ---
 
@@ -14,66 +14,37 @@
 
 ### Overall System Maturity
 
-| Dimension           | Grade              | Assessment (verified 2026-09-07, `b62180f`)                                                                                                                                                                                                                                                                                                           |
-| ------------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Architecture**    | A−                 | Strict layered direction (Presentation → Application → Domain → Infrastructure) per the production plan. Clean workspace boundaries. The storage circular import between `index.ts` ↔ `savings-repository.ts` was found and fixed (base-repository extraction).                                                                                       |
-| **Code Quality**    | **B− (recovered)** | `typecheck` is now green — the strict-strictness cleanup (ESM `.js` suffixes, `exactOptionalPropertyTypes`, branded currency in specs) is committed. `noUncheckedIndexedAccess` forced proper `!`/guard handling in specs. Remaining posture risk: `pnpm lint` reports ~85 pre-existing `no-explicit-any`/comment violations across 13+ legacy files. |
-| **Maintainability** | B+                 | Exceptional documentation: 2 ADRs, 8 epic reports, audit + fix plan, production plan. The docs now track _real_ status (this review was regenerated from live command output, not stale claims).                                                                                                                                                      |
-| **Performance**     | A                  | Beam-search stacking measured 0.58ms avg / 2.34ms worst vs <100ms target. Indexed indexes in storage. Not yet validated under real multi-tab/browser load.                                                                                                                                                                                            |
-| **Test Coverage**   | B+                 | **386 passed / 3 skipped / 0 failed** across 27 spec files (verified). Husky pre-commit and CI coverage-floor thresholds now enforce the gate; depth below 85% statements is the next lever.                                                                                                                                                          |
+| Dimension           | Grade                      | Assessment (verified 2026-09-09, `842a920`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Architecture**    | A−                         | Strict layering holds: `apps/extension` (presentation/application) → `packages/optimizer`, `packages/benefits` (application) → `packages/domain`, `packages/offer-engine`, `packages/rules-engine` (domain, dependency-free) → `packages/storage`, `packages/security` (infrastructure). No domain file imports Chrome, IndexedDB, DOM, or HTTP. The extension now consumes the library resilience layer instead of hand-rolled equivalents (`service-worker.ts` imports `validateMessage`, `RateLimiter` from domain and `SavingsRepository`, `DurableTaskQueue` from storage). |
+| **Code Quality**    | B+ (recovered, ratcheting) | `tsconfig.base.json` enforces `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `NodeNext` ESM. `typecheck` is green. Residual risk is legacy `// eslint-disable @typescript-eslint/no-explicit-any` headers (test-only `as any` remains in `service-worker.spec.ts`; production source uses typed `as unknown as` only at three narrow trust-boundary constructions).                                                                                                                                                                                         |
+| **Maintainability** | A−                         | 18 workspace packages with single-responsibility READMEs, 4 conformance suites that fail the build on architectural drift (`tests/conformance/`), per-epic docs plus `docs/audit-remediation-F19-F23.md`. New contributors can trace any guarantee from doc → source → test in two hops.                                                                                                                                                                                                                                                                                         |
+| **Performance**     | A                          | Beam-search stacking (`stacking-engine.ts`) holds 0.58ms avg / 2.34ms worst vs the 100ms budget; the 100k-voucher bound test (`pipeline-soundness.spec.ts:79`) completes inside a 15s envelope; savings queries are O(log n + k) via `by_merchant_timestamp` / `by_timestamp` / `by_merchant` indexes. Not yet validated under real multi-tab browser load.                                                                                                                                                                                                                      |
+| **Test Coverage**   | A−                         | **455 passed / 2 skipped / 0 failed across 37 files** (up from 386/27). Coverage floor enforced in `vitest.config.ts` (statements 60, branches 78, functions 65) and in CI (`test` → `test:coverage` → `build`). Depth toward the ≥85% statements target is the remaining lever — the floor is deliberately set below baseline so it ratchets upward.                                                                                                                                                                                                                            |
 
-**Overall Health Score**: **88/100 (B+)** — up from 81 once the build gates went green.
-**Production Readiness**: 🟡 **Near-ready** — functional gates pass. Remaining blockers to v1.0 enforcement: lint/prettier baseline treatment and gating tests/coverage in branch protection.
-
----
+**Overall Health Score**: **91/100 (A−)** — up from 88 once the 23-finding remediation landed with a green gate.
+**Production Readiness**: 🟢 **Ready for guarded rollout** (feature-flagged, dogfooded) — functional gates pass, persistence and privacy findings are closed with kill-mid-write and redaction tests. Remaining pre-GA work is operational: branch-protection enforcement, bundle allowlist check, and multi-tab/distributed-burn validation (see §3 P1).
 
 ### Architectural Philosophy
 
 **Core Strengths**:
 
-1. **Deterministic Financial Core (strategic moat)** — All money is `bigint` minor units; all money-math is pure functions. AI is explicitly quarantined to _explanation only_, never computation (`PaymentsOptimizer_Production_Architecture_Plan.md` §3.3, §44–45). This yields reproducible, debuggable, legally-defensible results.
-
-2. **True Local-First Privacy** — Profile, cards (name/issuer/last-4 only), vouchers, history all stay on-device in IndexedDB. No PAN/CVV/OTP ever stored (§37, §14). Telemetry is **off by default** and opt-in (§64). This is a durable product differentiator, not a bolt-on.
-
-3. **Defensive Boundary Validation** — Content-script/DOM data is treated as hostile and validated with Zod schemas at the message boundary (§41–43). The new `DomainSerializer` (Epic 1.3) adds schema-versioned, type-safe serialization of `BigInt`/`Date` across the service-worker ↔ content-script channel.
-
-4. **Disciplined Resilience Patterns** — `Result<T,E>` + 15 typed `DomainError`s (Epic 1.6), 3-state `CircuitBreaker` for the offer API (Epic 1.5), `TransactionCoordinator` with LIFO rollback for voucher-burn + savings-write atomicity (Epic 1.2), and `Clock` injection for deterministic time (Epic 1.8).
+1. **Deterministic financial core (strategic moat)** — All money is `bigint` minor units (`Money { amountMinor: bigint, currency }`, `domain/src/index.ts:85-88`). Ordering decisions use exact BigInt comparison first (`ranker.ts:48-55`: `totalBenefit` BigInt → float score → `id`), and display conversion routes through the per-currency divisor (`minorToMajor`, `index.ts:60-62`; `CURRENCY_MINOR_EXPONENT` with `JPY: 0` at `index.ts:46-54`). AI is quarantined to explanation-only (`ai-explain.ts:114-120` system instruction; `Dashboard.tsx:37-76` explicit click gate; `ai-explain.spec.ts` asserts no `fetch` without a valid key). Results are reproducible, debuggable, legally defensible.
+2. **True local-first privacy** — Profile, vouchers, and history stay on-device in IndexedDB. `Telemetry` defaults to `enabled ?? false` (`telemetry.ts:107`) and redacts at `record()` time before queueing (`redactProperties`/`hashId`/`bucketAmount`, `telemetry.ts:129-211`), verified pre-flush by spec (`telemetry.spec.ts:180-198`). No PAN/CVV/OTP is stored anywhere; card data is name/issuer/last-4 only.
+3. **Defensive boundary validation** — DOM/page data is treated as hostile: `preValidateCartJson` enforces 64KB / 17-digit caps before any BigInt-reviving parse (`service-worker.ts:329-351`), `validateMessage` rejects at the listener head (`service-worker.ts:362-371`), and `DomainSerializer` uses the collision-safe `{"__type":"bigint","value":"…"}` encoding (`serialization.ts:84-109`) shared by `types/messages.ts:88-94`.
+4. **Disciplined resilience patterns** — `Result<T,E>` + typed `DomainError`s, 3-state `CircuitBreaker`, `TransactionCoordinator.executeAtomically` with LIFO rollback (`transaction-coordinator.ts:99-215`), canonical `RateLimiter` (`rate-limiter.ts:18-39`, wired into the service worker gate at `service-worker.ts:105-125,269-308`), `Clock` injection, and the MV3-surviving `DurableTaskQueue` write-ahead path (`durable-task-queue.ts:85-155`; `drainDurableQueue` on startup + 1-minute `alarms` tick, `service-worker.ts:130-179`).
 
 **Fundamental Structural Risks**:
 
-1. **Quality Gate Erosion** — Phase 1 code was committed with failing typecheck/tests (the audit itself flags this: "No pre-commit type checking"). Without enforcement, the discipline that produced great patterns won't survive velocity.
-
-2. **Strict-Mode Shock** — `exactOptionalPropertyTypes: true` + `moduleResolution: node16` are good defaults but were adopted _after_ code was written, producing ~50 surfacing errors. The risk is teams loosening the config rather than fixing the code.
-
-3. **Chrome MV3 Lifecycle Fragility** — Service worker can be killed at any time. Phase 1 added compensation/rollback, but there is still no **durable task queue** for background work (telemetry flush, savings aggregation). Retries/in-flight work can be lost on worker kill.
-
----
+1. **Three divergent `SavingsEntry` shapes still coexist** — domain (`Money` bigint, `index.ts:484-494`), storage persisted shape (string `amountMinor`, `savings-repository.ts:14-36`), and `packages/savings` legacy shape (`savings/src/types.ts`). The runtime paths are reconciled (raw canonical shape + single writer + conformance guard), but the type-level duplication is a drift magnet. This is P1 debt, not a ship-blocker.
+2. **Cross-cutting infrastructure lives in `domain`** — `telemetry.ts`, `rate-limiter.ts`, `circuit-breaker.ts`, `result.ts`, `clock.ts`, `logger.ts` are observability/resilience infrastructure, not domain logic. Every churn there re-verifies the most-imported package. Extraction to leaf packages is the correct Phase 2 move.
+3. **MV3 lifecycle + multi-tab coordination remain partially proven** — single-instance durability is tested (kill-mid-write round-trip, `durable-task-queue.spec.ts`), but cross-tab double-spend (two tabs burning the same voucher) has no distributed lock yet, and real-browser multi-tab load has not been measured.
 
 ### Primary Bottlenecks
 
-The original three bottlenecks (combinatorial explosion, missing cache, no observability) are **resolved or materially addressed** in Phase 1:
-
-- ✅ **Combinatorial explosion** → solved by beam search (Epic 1.1), 42× faster than target.
-- ✅ **Observability** → structured `Logger` with PII redaction + privacy-first `Telemetry` (Epic 1.9).
-
-The stabilization sweep (2026-09-07) also cleared the two _process_ blockers that previously sat on top of this list:
-
-- ✅ **Lint & Format baseline** — one-time `pnpm format:write` normalised the repo; the remaining legacy `no-explicit-any`/`@ts-ignore` debt is allow-listed per file with a "remove when typed" directive. `pnpm lint` and `pnpm format` are green again.
-- ✅ **Pre-commit + coverage gates** — Husky pre-commit now runs `pnpm typecheck && pnpm test`; CI additionally enforces `pnpm format` and `pnpm test:coverage` (thresholds floor: stmts/lines 60%, funcs 65%, branches 78%, ratcheting toward 85%); the one remaining enforcement action is making those checks _required_ in GitHub branch protection (repo-admin setting).
-
-The **current** top-3 constraints:
-
-#### 1. **Residual Lint Warnings & Un-typed Legacy Surfaces** (P1)
-
-`pnpm lint` passes but still emits ~164 warnings (unused vars, `console.*` in benchmarks/specs). They are invisible to CI (`eslint .` without `--max-warnings 0`). Recommended: adopt `--max-warnings 0` in CI only after deleting/typing the legacy surfaces incrementally — do not disable the warnings globally.
-
-#### 2. **Coverage Below the 85% Target** (P1)
-
-Baseline coverage measured on 2026-09-07: **stmts/lines 64.5%, funcs 70.4%, branches 83.3%**. The CI floor is set just under baseline so it can ratchet upward. Reaching 85% statements requires integration/E2E-level specs over the extension and storage query paths (see §5 Phase 1, D5–D10).
-
-#### 3. **No Durable Background Execution for MV3** (P1)
-
-`chrome.alarms`/in-memory work is lost when the MV3 service worker is killed. Savings aggregation, telemetry flush, and offer refresh have no persistent, resumable queue. Phase 1 improved _atomicity of writes_ but not _survivability of scheduled work_.
+1. **Coverage depth below the 85% statements target** (P1) — The gate passes (floor 60/78/65) and the suite is large (455 tests), but `vitest.config.ts:27` still excludes `apps/extension/` from coverage and several UI/storage-query paths are exercised only at unit level. Raising the floor without adding Playwright failure-path specs would turn the gate decorative.
+2. **No distributed voucher-burn coordination** (P1) — `TransactionCoordinator` gives per-instance atomicity with compensating rollback, but IndexedDB is transactional per-store and there is no cross-tab lock. At current single-user volume this is acceptable; it becomes the top correctness risk the moment background + popup + two tabs contend on the same voucher.
+3. **Savings-history growth is unbounded** (P2, deferred by design) — Indexes make reads O(log n + k), but there is no partitioning, rollup, or retention policy. The pre-decision exists (time-based sharding by year + `aggregates` rollup, ADR-005 below); implementation is correctly deferred until ~10k entries, but the migration that will need it should be scaffolded before the ledger grows into it.
 
 ---
 
@@ -81,206 +52,145 @@ Baseline coverage measured on 2026-09-07: **stmts/lines 64.5%, funcs 70.4%, bran
 
 ### Design Patterns & Modularity
 
-**Assessment**: ★★★★★ (5/5) — architecture is the strongest aspect.
+**Assessment**: ★★★★★ (5/5) — the strongest dimension. Verified in-tree:
 
-- **Clean Layering**: `Presentation → Application → Domain → Infrastructure` enforced. Domain is dependency-free (no Chrome/IndexedDB/DOM/HTTP imports).
-- **Correct Pattern Choices**: Repository (`StorageRepository`), Strategy (`OptimizationStrategy`/`UnifiedBenefitOptimizer`), Registry (`MerchantRegistry`, `PluginRegistry`), Factory (`test-fixtures`), Monad (`Result<T,E>`), State Machine (`CircuitBreaker`), Saga (`TransactionCoordinator`), and Clock injection.
-- **Type-Safe Boundaries**: Branded `Money` currency types prevent cross-currency mixing at compile time.
-
-**Resolved since last review** (was a weakness): the manual `serializeStrategy()` BigInt handling has been replaced by a centralized `DomainSerializer` with schema versioning + Zod validation (Epic 1.3).
-
-**Remaining concern**:
-
-- **Cross-cutting infrastructure lives in `domain`** — `logger.ts`, `telemetry.ts`, `circuit-breaker.ts`, `result.ts`, `clock.ts` are excellent but are _observability/resilience infra_, not domain logic. This concentrates churn in the most-imported package and is exactly where the current typecheck errors landed. **Recommendation**: extract to `@payments-optimizer/observability` and `@payments-optimizer/resilience` leaf packages in Phase 2 (see §5).
-
----
+- **Layering is real, not aspirational.** `apps/extension/src/background/service-worker.ts:14-30` imports application (`optimizer`, `benefits`), domain (`domain`, `offer-engine`), and infrastructure (`storage`) in one direction. `packages/domain` imports nothing workspace-internal except its own siblings (`logger.js`, `clock.js`). The `storage` circular import (`index.ts` ↔ `savings-repository.ts`) was extracted to `base-repository.ts` and stays fixed.
+- **Pattern choices are correct and consistent**: Repository (`SavingsRepository`, `IndexedDbRepository`), Strategy (`UnifiedBenefitOptimizer`, `generateCandidates` → `filterDominated` → `rankStrategies`), Registry (`merchant-detector`, `plugins`), Monad (`Result<T,E>` with `andThen`/`map`/`mapErr`), State Machine (`CircuitBreaker` CLOSED→OPEN→HALF_OPEN), Saga with compensation (`TransactionCoordinator` LIFO rollback), Write-Ahead Log (`DurableTaskQueue` enqueue-before-work), Clock injection, and canonical Rate Limiter.
+- **Boundaries are type-safe.** Branded minor-unit types prevent cross-currency mixing at compile time; `exactOptionalPropertyTypes` forces explicit `?: T` vs `T | undefined` conventions; `SerializedRecipeStepSchema` now **requires** `benefitSourceId` (`message-schemas.ts:46-61`) so Zod can no longer silently strip the ledger join key (Fix F9 regression tests at `message-schemas.spec.ts:383-417`).
+- **Remaining concern**: the `packages/savings` vs `packages/storage` split is confusing — `savings/src/types.ts` and `savings/src/savings-repository.ts` duplicate shapes owned by `storage`. Consolidate or explicitly scope `savings` to pure calculation (`savings-calculator.ts`) and delete its repository twin in Phase 2.
 
 ### Data Architecture & Persistence
 
-**Assessment**: ★★★★½ (4.5/5)
+**Assessment**: ★★★★½ (4.5/5).
 
-**Strengths (all verified in-tree)**:
-
-- **IndexedDB + Repository abstraction** — domain never touches IDB directly (§35).
-- **Currency safety** — `BigInt` minor units, branded currency types; no float money.
-- **Optional AES-256-GCM export encryption** with PBKDF2 key derivation (§36).
-- **Indexes now in place** (Epic 1.4): migration V2 adds `by_merchant_timestamp` (compound), `by_timestamp`, `by_merchant`; `SavingsRepository` has an intelligent query router. O(log n + k) vs O(n) scan.
-- **Migration runner** (Epic 1.7): forward/backward migrations with rollback; used by the V2 index migration.
-
-**Remaining gaps**:
-
-1. **No cross-store atomicity beyond the operation set** — the `TransactionCoordinator` models app-level saga rollback, but IndexedDB itself is transactional per-store; multi-store operations rely on the coordinator's compensating actions. Keep tests proving a mid-transaction kill restores consistency.
-
-2. **No data sharding yet** — fine at current volume, but savings history will grow unbounded. Decision deferred to ADR-005 (time-based sharding), see §6.
-
-3. **Checksum/integrity for imported profiles** — export is encrypted; ensure import path validates schema + checksum before activation (§61, §47). Close this in the security hardening quick-wins (§4).
-
----
+- **Single writer, single shape.** There is exactly one savings persistence path: `persistConfirmedSavings` (enqueue → `SavingsRepository.put` → complete) plus `drainDurableQueue` on wake (`service-worker.ts:114-179`). The popup reads through the same `SavingsRepository.list()` (`App.tsx:18-42`). The conformance suite fails the build if a second `indexedDB.open('payments-optimizer-savings')` appears (`architecture-wiring.spec.ts:46-58`) or if the popup bypasses the repository (`:69-72`).
+- **Raw canonical record shape.** `SavingsRepository.put/get/list` override the `VersionedEntity` envelope and store raw `{id, timestamp, merchantId, …}` so V2 indexes actually cover records (`savings-repository.ts:82-134`; `savings-repository.spec.ts:63-87` asserts no `integrityHash/data/version` wrapper and index-hit parity). Migration V2 declares `by_merchant_timestamp` (compound), `by_timestamp`, `by_merchant`; the query router selects compound → timestamp → merchant → full scan (`savings-repository.ts:145-274`).
+- **Currency safety at the write boundary.** `isSameCurrency` refuses cross-currency subtraction before any `BigInt` math and skips the write with a `CURRENCY_MISMATCH` diagnostic (`service-worker.ts:186-230`), pinned by `service-worker.spec.ts:279` (USD-benefit vs INR-cart writes nothing).
+- **Durability, not just awaiting.** Awaiting alone does not survive MV3 kills; the write-ahead queue does. `durable-task-queue.spec.ts` proves write-ahead visibility across instances, no-duplicate completion, exponential-backoff dead-lettering, and the exact audit scenario (enqueue → kill → wake → drain → complete).
+- **Gaps**: (a) no cross-store atomicity beyond the coordinator's compensations — keep the mid-transaction-kill test; (b) no sharding/retention — deferred to ADR-005, correctly; (c) `executeSaveTask` still casts `payload as never` (`service-worker.ts:126`) — replace with a `StoredSavingsEntry` type guard in Phase 1 hygiene.
 
 ### Error Handling & Fault Tolerance
 
-**Assessment**: ★★★★☆ (4/5)
+**Assessment**: ★★★★☆ (4/5).
 
-**Strengths (implemented in Phase 1)**:
-
-- **Result type everywhere** (Epic 1.6): `Result<T,E>` with `Ok`/`Err`, `andThen`/`map`/`mapErr`, `tryCatch`, `combine`, plus 15 typed `DomainError` subclasses with codes and `recoverable` flags.
-- **Circuit breaker** (Epic 1.5): `CLOSED → OPEN → HALF_OPEN` with a health/metrics API; `OfferApiClient` adds timeout + retry and falls back to empty arrays so it never throws on external failure.
-- **Boundary validation**: Zod schemas validate every inbound extension message (Epic 1.3 message schemas).
-- **Rate limiting** in the service worker (10 req/min) for message abuse.
-
-**Remaining gaps**:
-
-1. **Circuit-breaker skip coverage** — one timeout/AbortController test is skipped due to mock-timer interaction. The most important resilience behavior (real timeout) is under-tested. Fix by driving the breaker with the injected `Clock` (Epic 1.8) instead of retrying real timers.
-
-2. **`exactOptionalPropertyTypes` friction** — several errors are _type-level_ symptoms of optional-field design (e.g., `OfferApiConfig.circuitBreaker`, `LogEntry.correlationId`). Adopt one convention: prefer `correlationId?: string` **or** `correlationId: string | undefined` consistently, and thread that convention through `DomainError.toJSON()` and the telemetry/serializer boundaries.
-
-3. **Silent-failure surface is reduced but not eliminated** — savings/save paths persist; ensure each `Result.failure` returned to the UI surfaces a non-blocking banner rather than console-only. Add a small UI-level integration test for the failure path.
-
----
+- **Structured errors end-to-end.** `Result<T,E>` + 15 `DomainError` subclasses with codes and `recoverable` flags; `PROFILE_NOT_CONFIGURED` / `PROFILE_CORRUPT` returned instead of optimizing against unvalidated data (`service-worker.ts:65-99` no-fallback path; `parseUserProfile` + `validateProfileIntegrity` in `profile-schema.ts:275-320`, wired at `service-worker.ts:85` and `App.tsx:185-277`); `CurrencyMismatchError` and `SaveError` propagate as results, not console-only warnings.
+- **Circuit breaking with fallback.** `CircuitBreaker` + `OfferApiClient` (timeout + retry, never throws on external failure — returns empty offers). Health/metrics API exists. The one skipped timeout test is tracked, not hidden.
+- **Rate limiting is now canonical.** `RateLimiter` (`domain/src/rate-limiter.ts`) is the single implementation; the service worker gates on the in-memory bucket first (exact per instance) with storage as advisory backstop and **fails closed** when storage is unavailable (`service-worker.ts:105-125,269-308`). The documented approximation bound (at most 2N−1 under cross-instance race) replaces the previous undocumented race.
+- **Remaining gaps**: (a) `SAVINGS_CONFIRMED` response is still constructed via `as unknown as OptimizePaymentResponse` (`service-worker.ts:545`) — add a first-class `SavingsConfirmedMessage` schema instead of casting; (b) `CONFIRM_SAVINGS` builds a partial `Cart` via cast (`service-worker.ts:531-537`) — construct through `CartSchema` instead; (c) silent-failure surface is reduced but UI banner coverage for every `Result.failure` path needs one Playwright failure-path spec (Phase 1 D8–D10).
 
 ### Observability & Diagnostics
 
-**Assessment**: ★★★★☆ (4/5) — implemented, tests now green, remaining gap is durability/instrumentation, not trust.
+**Assessment**: ★★★★☆ (4/5) — implemented and now honest.
 
-**Now in place** (Epic 1.9):
-
-- **Structured `Logger`** — JSON + human-readable output, log levels, correlation IDs, context.
-- **Automatic PII redaction** — passwords, tokens, emails, card numbers scrubbed before output (the redaction unit tests, including whole-`user`-subtree masking, now pass).
-- **Privacy-first `Telemetry`** — off by default, opt-in only, local-only mode supported, event queue with batching/sampling.
-- **Diagnostics UI** already exists (`apps/extension/src/popup/Diagnostics.tsx`).
-
-**Why it isn't 5/5**:
-
-- **No export/flush durability** — telemetry events queue in memory; an MV3 service-worker kill drops them. Needs the durable task queue (ADR-003).
-- **No performance-budget enforcement in CI** — budgets exist as targets (§51) but are not asserted by CI.
-
-**Near-term instrumentations to keep it honest**:
-
-- Emit a structured, redacted event on `optimization_completed` with `durationMs`, `merchantId` (hashed), `strategyCount`, and an `errorCode` on failure — all opt-in.
-- Add a `logBuffer` sink that writes ERROR-level entries to a capped IndexedDB store so the Diagnostics pane can show recent failures without shipping PII anywhere.
-
----
+- **Structured `Logger`** (JSON + human-readable, levels, correlation IDs, PII redaction with whole-`user`-subtree masking) and **privacy-first `Telemetry`** (off by default `enabled ?? false`, record-time redaction via `redactPaths` + per-install-salt ID hashing + amount bucketing before queue entry, local-only mode). The F5 regression tests assert both properties against the queued object pre-flush (`telemetry.spec.ts:180-198`), not against post-flush logs.
+- **Diagnostics UI exists** (`popup/Diagnostics.tsx`) and the event queue batches with sampling.
+- **Why not 5/5**: (a) no ERROR-sink to a capped IndexedDB `logBuffer` store for the Diagnostics pane (in-memory logs die with the worker); (b) no CI-asserted performance budgets from `packages/benchmarks` (budgets exist as targets, not gates); (c) `optimization_completed` structured event (duration, hashed merchant, strategy count, error code) should be emitted on every run while opted in — specified, not yet instrumented.
 
 ### Testing & Quality Assurance
 
-**Assessment**: ★★★★☆ (4/5) — suite green and trustworthy; gating still manual.
+**Assessment**: ★★★★☆ (4/5) — suite green, trustworthy, and now architecturally guarded.
 
-**Strengths**:
-
-- **386 tests** across 27 files (verified 2026-09-07); `Vitest` + `happy-dom`; `fast-check` available for property tests; `Playwright` for E2E (specs exist under `tests/e2e/`).
-- **`test-fixtures`** package for reusable cards/merchants/edge cases (multi-currency covered).
-- **Benchmark harness** (`tools/benchmark`, `packages/benchmarks`) for the stacking engine.
-- **CI** runs `install → typecheck → lint → test → build` in two jobs (`.github/workflows/ci.yml`).
-
-**Verified gaps (measured 2026-09-07)**:
-
-1. **Suite is green but was not kept green** — the logger assertions and storage import-cycle defects are fixed; the suite now reports **386 passed / 3 skipped / 0 failed**. The remaining risk is _prevention_: nothing stops a red commit from landing again.
-
-2. **CI cannot actually enforce** — although CI runs `typecheck` and `test`, results are advisory (a red suite reached `main` twice). **Fix**: make `pnpm typecheck`, `pnpm test`, and `pnpm lint` required checks; add a pre-commit hook; require green before merge.
-
-3. **Coverage % not measured in CI** — `@vitest/coverage-v8` is installed. A floor was added 2026-09-07 (stmts/lines 60%, funcs 65%, branches 78%) and is enforced via `pnpm test:coverage` in CI; ratchet upward toward the ≥85% target.
-
-4. **Property-based tests exist but are underused** — for a financial engine, add `fast-check` invariants now (discounts never increase effective cost; caps never exceeded; expired offers never add benefit; determinism on identical input). See §5 Phase 1.
-
-5. **Mutation testing not wired** — `@stryker-mutator` would verify these financial tests actually detect wrong rates/caps/operators. Defer to Phase 2.
+- **Scale**: 37 files / 455 passed / 2 skipped (vitest + happy-dom; `fast-check` available; Playwright present with `tests/e2e/` excluded from the unit run by config). Conformance suites (`tests/conformance/`, 4 files, 37 tests) enforce manifest permissions, CSP/`eval` absence, `onMessageExternal` absence, no `test-fixtures` in production graphs, Money/quantity validation, 100k-voucher bound, byte-identical determinism, money round-trip, migration abort, and AI gating.
+- **Regression-test discipline**: every remediation fix shipped with the audit's exploit scenario encoded (F9 undefined-ledger-key rejection, F5 pre-flush redaction, F11 1-minor-unit ordering, F12 JPY divisor, F14 limiter bound, F15 concrete attribute filter, F16 `"100n"`-as-string round-trip, Task 0.4 zero-total acceptance).
+- **Gaps**: (a) property-based financial invariants (`fast-check`: discounts never raise effective cost, caps never exceeded, expired offers never add benefit, determinism) are available but underused — add 5 targeted properties in Phase 1; (b) Playwright failure-path specs (save-failure banner, offline fallback, invalid-message rejection, voucher-burn rollback) do not exist yet; (c) `vitest.config.ts:27` excludes `apps/extension/` from coverage — include it once the failure-path specs land, then ratchet the floor.
 
 ---
 
 ## 3. Critical Modifications & Technical Debt Remediation
 
-This table now reflects the **current** debt (stabilization complete). The P0 items in rows 181-183 below were **resolved on 2026-09-07** during the stabilization sweep (commit range up to `b62180f`); they are kept as _fixed references_, not open blockers.
+| Priority | Category      | Component / Module                                                                | Issue / Technical Debt                                                                                                                          | Impact If Ignored                                                                       | Recommended Fix                                                                                                                                                                       |
+| -------- | ------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **P0**   | Correctness   | `packages/domain/src/message-schemas.ts`                                          | `SerializedRecipeStepSchema` omitted `benefitSourceId`; Zod stripped the ledger join key → `benefitId: undefined` on every persisted entry      | ROI aggregation and all future analytics join on garbage                                | ✅ **Fixed** (`6b816ee`): required `benefitSourceId` (+ optional `benefitId`), fixture updated, F9 regression tests; service worker derives `benefitsApplied` from `recipeSteps`      |
+| **P0**   | Privacy       | `packages/domain/src/telemetry.ts`                                                | `enabled ?? true`, `redactPaths` plumbed but never applied — raw merchant IDs and exact amounts sat in the queue                                | Violates the local-first privacy contract; the zero-egress claim is false               | ✅ **Fixed** (`62c2f4a`): default `false`, record-time hashing/bucketing/`redactPaths` enforcement, `getQueuedEvents()` hook, pre-flush assertions                                    |
+| **P0**   | Correctness   | `packages/optimizer/src/ranker.ts`, `packages/benefits/.../opportunity-scorer.ts` | `Number(amountMinor/100n)` floor truncation + hardcoded `/100` divisor (JPY ¥15 scored as ¥0.15); float-score sort allowed 1-minor-unit ties    | Wrong winner on near-ties; entire JPY market mispriced                                  | ✅ **Fixed** (`c9878db`): `CURRENCY_MINOR_EXPONENT`/`minorDivisor`/`minorToMajor`, BigInt-primary + `id` total-order comparator, F11/F12 tests                                        |
+| **P0**   | Build hygiene | `packages/*/src/*.js`, `*.d.ts` emitted next to sources                           | Stale `tsc` artifacts shadowed source resolution (`getQueuedEvents is not a function` while the method existed)                                 | Phantom test failures; false confidence in green runs                                   | ✅ **Fixed**: deleted artifacts, `.gitignore` now covers `packages/*/src/**/*.js`, `*.d.ts`, maps, plus `.kilo/`; `dist/` was already ignored                                         |
+| **P1**   | Correctness   | `apps/extension` service worker + popup                                           | `SAVINGS_CONFIRMED` and partial-`Cart` constructions via `as unknown as`; `executeSaveTask(payload as never)`                                   | Casts bypass the validation the audit just installed; next schema drift is silent again | Replace with `SavingsConfirmedMessageSchema` + `CartSchema`-constructed cart + `StoredSavingsEntry` guard; add lint rule banning `as unknown as` in `apps/extension/src` except tests |
+| **P1**   | Reliability   | `apps/extension` (service worker)                                                 | No distributed voucher-burn lock; `TransactionCoordinator` is per-instance                                                                      | Two tabs can double-spend the same voucher; background + popup can contend              | `BroadcastChannel` + `chrome.storage.onChanged` bridge (ADR-004) with a burn-lease record in IndexedDB; Playwright two-tab contention spec                                            |
+| **P1**   | Coverage      | `vitest.config.ts`, `tests/e2e/`                                                  | Extension excluded from coverage; no Playwright failure-path specs; `fast-check` underused                                                      | Floor ratchet stalls below 85%; error paths untested where users actually meet them     | Include `apps/extension` in coverage; add 5 `fast-check` money invariants + 4 Playwright failure specs; ratchet floor 60→70→85                                                        |
+| **P1**   | Residual      | `packages/savings` vs `packages/storage`                                          | Duplicate `SavingsEntry` shapes and a second `savings-repository.ts`                                                                            | Next author edits the wrong copy; indexes/writer drift again                            | Scope `savings` to pure calculation; delete its repository twin or re-export the storage canonical type                                                                               |
+| **P2**   | Hygiene       | `packages/domain`                                                                 | Observability/resilience infra (`logger`, `telemetry`, `circuit-breaker`, `rate-limiter`, `result`, `clock`) lives in the most-imported package | Every infra churn re-verifies the world; exactly where past typecheck fires clustered   | Extract `@payments-optimizer/observability` + `@payments-optimizer/resilience` leaf packages (Phase 2)                                                                                |
+| **P2**   | DX            | `apps/extension/src/content/content-script.ts`, `packages/checkout-monitor`       | Fixed this round (`stripActiveDomContent` rename, concrete attribute filter, shared truncate path) — keep honest                                | If `sanitize*` naming or `data-*` wildcard returns, Task 0.2 / F15 tests catch it       | ✅ **Fixed** (`e87957b`); add ESLint `no-restricted-syntax` on `attributeFilter: ['data-*']` to prevent recurrence                                                                    |
+| **P2**   | Docs          | `docs/`                                                                           | F19–F23 were code-less spec gaps                                                                                                                | Features built on undecided contracts (price source, PAN boundary, hysteresis)          | ✅ **Fixed** (`842a920`): `docs/audit-remediation-F19-F23.md` records each decision/contract; F21 ADR and F22 tooling gates are Phase 2 DoD                                           |
 
-| Priority | Category    | Component / Module                            | Issue / Technical Debt                                                                                     | Impact If Ignored                              | Recommended Fix                                                                                                                          | Status                                      |
-| -------- | ----------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| **P0**   | Build       | `packages/domain/src/*.ts`                    | `exactOptionalPropertyTypes` violations & implicit-any in logger/telemetry/offer-api/result                | Blocked build                                  | Resolve `exactOptionalPropertyTypes`: mark fields `?: T` **or** `T \| undefined` consistently                                            | ✅ Resolved                                 |
-| **P0**   | Build       | `packages/domain/src/*`                       | `node16` ESM: missing `.js` extensions on relative imports                                                 | Blocked build                                  | Add `.js` extensions to relative imports                                                                                                 | ✅ Resolved                                 |
-| **P0**   | Tests       | `packages/domain/src/logger.spec.ts`          | 4 failing tests (context format, child logger)                                                             | Observability untrustworthy                    | Fixed assertions to match corrected formatter                                                                                            | ✅ Resolved                                 |
-| **P0**   | Reliability | `packages/storage`                            | Circular import (`index.ts` ↔ `savings-repository.ts`) produced `Class extends value undefined` at runtime | Storage broke on import; savings repo unusable | Extracted `base-repository.ts` (VersionedEntity, integrity helpers, StorageRepository, IndexedDbRepository) — cycle eliminated           | ✅ Resolved                                 |
-| **P0**   | Process     | Repo-wide                                     | No pre-commit gate; lint/format not clean                                                                  | Regressions re-enter                           | Adopt Husky pre-commit; add a single **baseline commit** (one-time `format:write` + targeted eslint-disable) so new code is judged clean | ✅ Resolved (2026-09-07)                    |
-| **P1**   | Reliability | `apps/extension` (service worker)             | No durable task queue for background work; MV3 worker kill drops retries/telemetry/aggregation             | Lost telemetry, missed aggregation             | IndexedDB-backed durable task queue + `chrome.alarms` (ADR-003)                                                                          | ⏳ Not started                              |
-| **P1**   | Correctness | `packages/storage/transaction-coordinator.ts` | Generic `Operation<T>[]` too narrow for heterogeneous ops (audit §2)                                       | Compile errors / forced `any` at call sites    | Refactor `executeAll(op: Operation<any>[])` with per-op variance, keep rollback typing                                                   | 🔄 In progress (part of audit fix sequence) |
-| **P1**   | Security    | Export/import path                            | Imported profile not checksum-verified before activation                                                   | Tampered export could be activated             | Verify `schemaVersion` + checksum before activation; fail closed                                                                         | ⏳ Not started                              |
-| **P2**   | Hygiene     | `packages/domain`                             | Cross-cutting infra (logger, telemetry, circuit-breaker, result, clock) lives in `domain`                  | Churn in the most-imported package             | Extract `@payments-optimizer/observability` + `@payments-optimizer/resilience` leaf packages (Phase 2)                                   | ⏳ Not started                              |
-| **P2**   | Tests       | `packages/domain/src/circuit-breaker.spec.ts` | Timeout test skipped due to mock-timer interaction                                                         | Core resilience path under-tested              | Drive with injected `Clock` instead of real timers                                                                                       | ⏳ Not started                              |
-| **P2**   | DX          | `apps/extension`                              | No service-worker HMR                                                                                      | Slow iterate                                   | SW HMR via Vite plugin + `chrome.runtime.reload()` signal                                                                                | ⏳ Not started                              |
+### Before/After: P0 — `benefitSourceId` ledger key (Fix F9)
 
----
-
-### Before/After: P0 — `exactOptionalPropertyTypes` fixes
-
-**Before (current offending pattern):**
+**Before (schema silently stripped the key):**
 
 ```typescript
-// packages/domain/src/logger.ts
-export interface LogEntry {
-  timestamp: string;
-  level: LogLevel;
-  message: string;
-  correlationId: string; // required...
-}
-// ...later
-const entry: LogEntry = {
-  timestamp,
-  level,
-  message,
-  correlationId: maybeId, // string | undefined  → TS2375
-};
+// packages/domain/src/message-schemas.ts
+export const SerializedRecipeStepSchema = z.object({
+  stepNumber: z.number().int().positive(),
+  actionType: z.string(),
+  benefitSourceName: z.string(), // ← no benefitSourceId
+  // …
+});
+// service-worker persisted benefitsApplied: [] — ledger had no join key
+await saveConfirmedOptimization(cart, strategy, originalTotal, []);
 ```
 
-**After (consistent optional conventions):**
+**After (schema carries the key; worker derives the ledger):**
 
 ```typescript
-export interface LogEntry {
-  timestamp: string;
-  level: LogLevel;
-  message: string;
-  correlationId?: string; // <-- optional
-  context?: Record<string, unknown>;
-}
-
-const entry: LogEntry = {
-  timestamp,
-  level,
-  message,
-  ...(maybeId !== undefined && { correlationId: maybeId }),
-};
+export const SerializedRecipeStepSchema = z.object({
+  benefitId: z.string().min(1).optional(),
+  benefitSourceId: z.string().min(1), // ← required; validation rejects without it
+  // …
+});
+// service-worker CONFIRM_SAVINGS derives benefits from recipeSteps:
+const benefitsFromSteps = (strategy.recipeSteps ?? []).map((s) => ({
+  benefitId: s.benefitSourceId, // stable ID; names are never join keys
+  benefitType: s.actionType,
+  benefitSourceId: s.benefitSourceId,
+  benefitSourceName: s.benefitSourceName,
+  amountApplied: {
+    amountMinor: BigInt(s.amountApplied.amountMinor),
+    currency: s.amountApplied.currency,
+  },
+}));
 ```
 
-For `OfferApiConfig.circuitBreaker` prefer explicit-undefined:
-
-```typescript
-interface OfferApiConfig {
-  baseUrl: string;
-  timeout: number;
-  retries: number;
-  circuitBreaker: CircuitBreakerConfig | undefined; // explicit, satisfies exactOptionalPropertyTypes
-}
-```
-
-**Rule of thumb**: use `?: T` for _absent_ concepts and `T | undefined` where "explicitly not set" is meaningful.
-
----
-
-### Before/After: P0 — `node16` ESM import extensions
+### Before/After: P0 — telemetry default + record-time redaction (Fix F5)
 
 **Before:**
 
 ```typescript
-// packages/domain/src/logger.ts
-import { ok, err } from './result'; // TS2835
-import { SystemClock } from './clock'; // TS2835
-import { DomainError } from './errors'; // TS2835
+const enabled = config.enabled ?? true; // ← on unless asked off
+record(event) {
+  this.queueEvent({ id, timestamp, ...event }); // ← raw IDs/amounts queued
+}
 ```
 
 **After:**
 
 ```typescript
-import { ok, err } from './result.js';
-import { SystemClock } from './clock.js';
-import { DomainError } from './errors.js';
+const enabled = config.enabled ?? false; // ← off unless opted in
+record(event) {
+  this.queueEvent({ id, timestamp, ...event,
+    properties: this.redactProperties(event.properties ?? {}) }); // ← hashed/bucketed pre-queue
+}
 ```
 
-Apply across `logger.ts`, `telemetry.ts`, `result.spec.ts`, `message-schemas`, etc. This is a repo-wide, mechanical fix well suited to a single focused PR.
+### Before/After: P0 — BigInt ordering + per-currency divisor (Fix F11/F12)
+
+**Before:**
+
+```typescript
+return Number(amountMinor / 100n); // floor truncation
+return Number(amountMinor) / 100; // JPY-blind
+filtered.sort((a, b) => scoreStrategy(b) - scoreStrategy(a)); // 1-paise ties
+```
+
+**After:**
+
+```typescript
+// domain/src/index.ts
+export const CURRENCY_MINOR_EXPONENT = { INR: 2, USD: 2, EUR: 2, GBP: 2, JPY: 0, SGD: 2, AED: 2 };
+export const minorToMajor = (minor: bigint, ccy: Currency) =>
+  Number(minor) / Number(10n ** BigInt(exponent[ccy]));
+// ranker.ts — total order, never ties on 1 minor unit, deterministic on id
+if (a.totalBenefit.amountMinor !== b.totalBenefit.amountMinor)
+  return a.totalBenefit.amountMinor > b.totalBenefit.amountMinor ? -1 : 1;
+```
 
 ---
 
@@ -288,929 +198,97 @@ Apply across `logger.ts`, `telemetry.ts`, `result.spec.ts`, `message-schemas`, e
 
 ### Performance & Scalability
 
-#### 1. **Three-Tier Caching for the Public Benefit Catalog**
-
-**Gap**: `offers-bundle.json` (plus merchant metadata) is parsed on every service-worker cold start and duplicated per tab.
-
-**Target architecture** (L1 → L2 → L3):
-
-```
-L1: Service-worker memory (V8 heap)   — active merchant offers, TTL ~5 min, ~50 KB
-L2: IndexedDB (cross-tab shared)      — full catalog, TTL 1 day; merchant data TTL 7 days
-L3: Remote public-data CDN (optional) — versioned bundle, refreshed on install/weekly
-```
-
-Honor the local-first boundary: L3 fetches only versioned _public_ data and never carries profile/cart identifiers (§38). Add a content-addressed version/checksum so stale bundles are atomically rejected (§47).
-
-**Expected impact**: cold-start parse 250ms → <50ms; per-tab memory duplication eliminated via L2 sharing.
-
-#### 2. **Durable Background Task Queue (MV3-safe)**
-
-**Gap**: aggregation, offer refresh, and telemetry flush are not resumable if the service worker is killed mid-task.
-
-Adopt the IndexedDB-backed queue from ADR-003 (§6) with `chrome.alarms` as the wake trigger and exponential backoff. This also gives retries for circuit-broken offer fetches a durable home.
-
-#### 3. **Move Savings Aggregation Off the Render Path**
-
-Current savings-summary components aggregate synchronously over history. Pre-compute daily/merchant aggregates in the background worker (6h alarm) and store them in an `aggregates` store; UI reads precomputed rollups with an invalidation timestamp.
-
-#### 4. **Keep IndexedDB Access Concentrated**
-
-Verify all IDB reads/writes go through the repository/savings-repository abstractions; add a lint rule (`no-restricted-globals` on `indexedDB` outside `packages/storage`) so the layering guarantee survives code review.
-
----
+1. **Three-tier public-data caching (L1→L2→L3).** `offers-bundle.json` is parsed on every service-worker cold start and duplicated per tab. Target: L1 worker memory (active merchant, ~5-min TTL, ~50KB) → L2 IndexedDB shared catalog (1-day TTL; merchant metadata 7-day) → L3 versioned public-data CDN refreshed on install/weekly. Honor local-first: L3 fetches versioned _public_ data only, never profile/cart identifiers, with content-addressed checksum rejection. Expected: cold-start parse 250ms → <50ms; per-tab duplication eliminated.
+2. **Move savings aggregation off the render path.** `SavingsSummary`/`SavingsHistory` reduce over history synchronously. Pre-compute daily/merchant aggregates on the 6-hour `alarms` tick into an `aggregates` store; UI reads rollups with an invalidation timestamp. Required before the 10k-entry scale point.
+3. **CI-asserted benchmark budgets.** `packages/benchmarks` + `tools/benchmark` exist but no PR asserts them. Add a CI job failing on stacking/graph/optimization budget breach (P95 <100ms for 50+ vouchers; 100k-voucher bound as the canary). The pipeline-soundness 100k test currently takes ~7.5s of the 15s envelope — healthy headroom, now lock it in.
+4. **Concentrate IndexedDB access.** All IDB I/O already flows through repository abstractions; add an ESLint `no-restricted-globals` rule on bare `indexedDB` outside `packages/storage` so the layering guarantee survives review.
 
 ### Developer Experience (DX) & Tooling
 
-1. **Make CI the enforcer, not the narrator**
-   - Husky pre-commit: `pnpm build && pnpm test`.
-   - Mark `typecheck`, `test`, `build` as **required** checks on the PR branch; add a `coverage ≥ 85%` step using the already-installed `@vitest/coverage-v8`.
-   - Add `tsc --noEmit` to the extension package's own script so the whole workspace is covered.
-
-2. **Green gate is done; harden it now (est. 1–2 days)**
-   - The typecheck/test/build legs are already green (committed through `b62180f`).
-   - Next: add a single **Prettier baseline commit** (`pnpm format:write`) plus a small legacy allow-list in ESLint config so `pnpm lint` becomes a real gate; then add Husky pre-commit (`pnpm typecheck && pnpm test`) and mark the checks required in branch protection.
-   - Land each with green CI before merging the next — this makes "gate is real" permanent.
-
-3. **Service-Worker HMR** for the extension (Vite plugin sending a `sw-reload` signal to `chrome.runtime.reload()`).
-
-4. **Generate runtime message validators from types** (`ts-to-zod`) so the content-script ↔ service-worker contract never drifts from the hand-written Zod schemas.
-
-5. **Sweep the audit debt** (each small, isolated): un-skip the circuit-breaker timeout test via `TestClock`; add export/import checksum verification; resolve the `TransactionCoordinator` generic.
-
----
+1. **Keep the gate real, then ratchet it.** Husky pre-commit (`pnpm typecheck` + `pnpm test`) and CI (`typecheck` → `lint` → `format` → `test` → `test:coverage` → `build`) are green. Next, in order: (a) mark all six checks **required** in GitHub branch protection (repo-admin setting, the one unenforced step); (b) adopt `--max-warnings 0` once the legacy `any`-headers are retired file-by-file; (c) include `apps/extension/` in coverage and ratchet the floor toward 85%.
+2. **Kill the cast habit with tooling.** Add `no-restricted-syntax` bans for `as any` in production sources and for `attributeFilter: ['data-*']`, plus a `ts-to-zod` generation step so message validators cannot drift from types again.
+3. **Service-worker HMR.** Extension iteration is slow without it — Vite plugin sending `sw-reload` → `chrome.runtime.reload()`. Small cost, daily dividend.
+4. **Stop emitting build artifacts into `src`.** Root cause of the phantom `getQueuedEvents is not a function` failure was `tsc` output next to sources shadowing module resolution. The `.gitignore` fix stops commits; add a repo-root `clean` script (`rimraf` on `**/src/*.js|*.d.ts|*.map`) and a CI check failing on their presence.
 
 ### Security & Hardening Quick-Wins
 
-1. **CSP tightening in `manifest.json`**:
-
-```json
-{
-  "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none';"
-  }
-}
-```
-
-2. **Profile import fails closed**: decrypt → validate `schemaVersion` → verify checksum → validate domain invariants → migrate → activate (§61). Any mismatch rejects the file with a structured `ImportError`.
-
-3. **Optional-field hygiene** (directly tied to the typecheck debt): never write `field?: string` and then assign `field: maybeUndefined`. Standardize on the §3 convention — this is a _security_ issue too, because `undefined` leakage is how optional state silently reaches serializers.
-
-4. **Network allowlist test**: add a CI test that greps the built bundle for hardcoded endpoints and asserts they belong to the approved public-data allowlist (§39).
+1. **CSP + bundle allowlist test.** `manifest.json` already pins `script-src 'self'` with the single `connect-src` exception (`extension-surface.spec.ts:69-82`); Task 0.2 greps zero `eval(`/`innerHTML`. Add the missing companion: a CI test grepping the **built bundle** for hardcoded endpoints and asserting allowlist membership, plus zero `test-fixture` card-data references (source-level check exists at `extension-surface.spec.ts:103`; extend to bundle).
+2. **Profile import stays fail-closed.** `importer.ts` already reuses `UserProfileSchema`, enforces referential integrity (`voucher.cardId` ∈ `paymentMethods`), gates checksums, and parses CSV numerics without `parseFloat`/`BigInt(NaN)` (`importer.spec.ts` covers dangling refs, negative amounts, `"12.34.56"` cells). Keep the "reject whole import, name the record" semantics — no partial writes.
+3. **Finish the `as unknown as` cleanup** (§3 P1): `SAVINGS_CONFIRMED` schema, `CartSchema`-built confirm cart, `StoredSavingsEntry` guard. Each cast removed is a future F7/F18-class finding prevented.
 
 ---
 
 ## 5. Future Engineering & Feature Roadmap
 
-### Phase 1: Stabilization & Green Gate (Short-Term: Days 1–10)
+### Phase 1: Stabilization & Green-Gate Hardening (Short-Term: Weeks 1–4)
 
-**Exit criterion**: `pnpm typecheck`, `pnpm test`, `pnpm build`, and `pnpm lint` all green on `main`, enforced by CI.
+**Exit criterion**: `typecheck`, `test`, `build`, `lint`, `format` green on every PR _and required in branch protection_; coverage floor ratcheting; zero `as unknown as` in production extension sources.
 
-**Status (verified 2026-09-07)**: the gate is fully green — typecheck, 386 tests, build, **lint**, and **format** all pass locally, Husky pre-commit runs `typecheck && test`, and CI enforces `format` + `test:coverage` thresholds. Remaining work is test-coverage depth (D5–D10), not gating.
+- [x] **D1**: Option A wiring (library resilience layer into the extension) + architecture-conformance CI check — done (`beed1a5`, `183a37e`).
+- [x] **D2**: Durable write-ahead queue + single savings writer + canonical raw shape + currency guard + confirm-gate — done (`3c06d8b`, `beed1a5`).
+- [x] **D3**: F9 ledger keys, F5 privacy defaults, F11/F12 money correctness, F14–F17 hygiene, Task 0.4 zero-path — done (`6b816ee`…`e87957b`).
+- [x] **D4**: F19–F23 spec amendments before feature code — done (`842a920`).
+- [ ] **D5**: Branch-protection enforcement + `--max-warnings 0` adoption + `clean` script + bundle allowlist test (est. 1–2 days).
+- [ ] **D6**: 5 `fast-check` money invariants (discounts never raise cost; caps never exceeded; expired offers never add benefit; determinism; score-ordering) — the highest-leverage coverage addition for a financial engine.
+- [ ] **D7**: 4 Playwright failure-path specs (save-failure banner, offline fallback, invalid-message rejection, voucher-burn rollback) + include `apps/extension/` in coverage; ratchet floor to 70.
+- [ ] **D8**: P1 cast cleanup (`SAVINGS_CONFIRMED` schema, `CartSchema` confirm cart, `StoredSavingsEntry` guard) + `savings` vs `storage` consolidation decision.
 
-- [x] **D1–2**: `.js`-extension + `exactOptionalPropertyTypes` fix (domain) — done, green.
-- [x] **D3**: Fix `logger.spec.ts` + recover child-logger context — done.
-- [x] **D4**: Lint/Prettier baseline; Husky pre-commit (`pnpm typecheck && pnpm test`); CI format + coverage steps; coverage floor thresholds — done. (Enforce `--max-warnings 0` once warnings are retired; enable branch protection on the checks.)
-- [ ] **D5–7**: Add property-based invariants (fast-check): discount never raises effective cost; rewards never exceed caps; expired offers never add benefit; identical inputs → identical outputs; sorted-by-score invariant.
-- [ ] **D8–10**: Add Playwright integration tests for failure paths (save-failure banner, circuit-breaker offline fallback, invalid-message rejection, atomic voucher-burn rollback).
-
-**Deliverables**: green build, trustworthy suite, enforced gates, documented error-path behavior.
-
----
+**Deliverables**: enforced green gate, full-response determinism proof, documented error-path behavior, 70%+ floor.
 
 ### Phase 2: Architectural Scaling & Cross-Tab Coordination (Medium-Term: Month 2–3)
 
-**Exit criterion**: complex profiles (50+ vouchers) stay <100ms P95; multi-tab writes are race-free; background work survives worker kills.
+**Exit criterion**: 50+ voucher profiles stay <100ms P95 (CI-asserted); multi-tab writes race-free; background work survives worker kills; `domain` freed of infrastructure.
 
-- [ ] **Extract leaf packages**: `@payments-optimizer/observability` (logger, telemetry) and `@payments-optimizer/resilience` (circuit-breaker, result, clock). Reduces churn surface in `domain`.
-- [ ] **Durable task queue + alarms** (ADR-003): telemetry flush, savings aggregation, offer refresh.
-- [ ] **Cross-tab coordination**: `BroadcastChannel` for state sync + `chrome.storage.onChanged` fallback (ADR-004); distributed lock for voucher burns to prevent double-spend.
-- [ ] **Schema migration test harness** for every future `storage` migration (V2 index migration as the first golden case).
-- [ ] **Benchmark budgets in CI**: assert stacking/graph/optimization budgets from `packages/benchmarks` on every PR.
-
----
+- [ ] **Extract leaf packages**: `@payments-optimizer/observability` (logger, telemetry) and `@payments-optimizer/resilience` (circuit-breaker, rate-limiter, result, clock). Reduces churn surface in `domain`; mechanical move with re-export shims.
+- [ ] **Cross-tab coordination** (ADR-004): `BroadcastChannel` tab-to-tab + `chrome.storage.onChanged` service-worker bridge; IndexedDB burn-lease for voucher double-spend prevention; two-tab Playwright contention spec.
+- [ ] **Aggregation worker + rollups**: 6-hour `alarms` pre-computation into `aggregates` store (Phase 1 D7 UI reads it); sharding scaffold per ADR-005 without activating it.
+- [ ] **Benchmark budgets in CI**: stacking/graph/optimization budgets asserted per PR; 100k-voucher canary tracked historically.
+- [ ] **F22 tooling gates**: ESLint payment-selector ban + zero-payment-field-read integration test as hard DoD before any Smart Checkout flag leaves dogfood.
+- [ ] **F21 ADR**: price-source decision + absolute-delta floor + `verifiedAt` terms dataset (blocks Price-Drop Guard implementation).
 
 ### Phase 3: Next-Generation Feature Expansion (Long-Term: Month 4–6+)
 
-#### Feature 3.1 — AI-Powered Predictive Insights
+Each feature ships independently behind a default-off flag with a two-week dogfood before staged rollout. Global constraints carry forward: local-first IndexedDB by default, BigInt branded money only, `alarms`+durable-queue for all scheduled work, structured-error fail-closed semantics, deterministic `Why am I seeing this?` explainability, no autonomous payment submission.
 
-- **Business/Technical Value**: retention via proactive, spend-pattern-aware suggestions; differentiator.
-- **Complexity**: High.
-- **Prerequisites**: privacy-safe analytics (k-anonymity, ε=0.1 DP per ADR-006), local time-series storage, on-device inference (TF.js/WASM), and strict quarantine of AI from money math (§44).
+| Feature                                            | Business / Technical Value                                                                             | Complexity  | Architectural Prerequisites                                                                                                                      |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **3.1 Card Portfolio ROI & Annual-Fee Advisor**    | Retention via keep/downgrade verdicts, fee-waiver warnings; reuses savings ledger + aggregation worker | Medium      | Phase 2 aggregates; F23 attribution rule (pro-rate by entry timestamp); `CardAnnualCost` store + migration                                       |
+| **3.2 Billing-Cycle-Aware Best-Time Optimization** | Breaks near-ties with float-days/milestones; expands to timing-aware recommendations                   | Medium      | F19 total-order comparator (landed); `TimingAwareOptimizer` decorator preserving byte-identical output with no billing data                      |
+| **3.3 Recurring Charge & Subscription Auditor**    | Re-optimizes repeat spend; surfaces better-card annual savings; fully local detection                  | Medium      | F20 hysteresis (0.65/0.55) + `merchantId+amount-bucket` dedup key; indexed savings + sharding path                                               |
+| **3.4 Post-Purchase Price-Drop & Refund Guard**    | Protects value after checkout; surfaces card price-protection terms with provenance                    | Medium–High | F21 price-source ADR + allowlisted source; decaying durable schedule; versioned terms dataset with `verifiedAt`                                  |
+| **3.5 One-Tap Smart Checkout**                     | Converts recommendations into user-approved actions; prerequisite for F13 confirm-gate scale           | High        | F22 tooling gates (ESLint + zero-read test + adapter allowlist + malformed-message DoD); F13 confirm-gate (landed); no PAN/OTP/CVV handling ever |
 
-#### Feature 3.2 — Cross-Currency "International Travel Mode"
-
-- **Business/Technical Value**: expands TAM beyond INR markets; exercises the multi-currency domain model already in place.
-- **Complexity**: Medium.
-- **Prerequisites**: explicit rate tracking (source, rate, timestamp) with _no silent cross-currency comparison_, forex datasets, geolocation permission review.
-
-#### Feature 3.3 — Savings Dashboard & Analytics
-
-- **Business/Technical Value**: retention and share-of-wallet; feeds telemetry insights.
-- **Complexity**: Medium.
-- **Prerequisites**: aggregated savings store (Phase 2 item 3), sharding decision (ADR-005) before 10k+ entries.
-
-#### Feature 3.4 — Community-Verified Offers (Privacy-First)
-
-- **Business/Technical Value**: network effects / offer coverage moat.
-- **Complexity**: High (backend + reputation + differential privacy).
-- **Prerequisites**: hybrid-cloud decision (ADR-006), offer-signing for community submissions, explicit opt-in.
+_Deferred Phase 3 moonshots (unchanged): AI predictive insights (on-device only, quarantined from money math), International Travel Mode (exercises the multi-currency model + F12 divisor), Savings Dashboard & Analytics (needs aggregates + sharding), Community-Verified Offers (hybrid-cloud boundary per ADR-006)._
 
 ---
 
 ## 6. Technical Decision Log (ADR Recommendations)
 
-The team must formally decide these before scaling. ADR-001 (repository foundation) and ADR-002 (benefits & membership intelligence) exist; the following are the next required records.
+### ADR-003: Durable Background Execution for MV3 — **DECIDED (Option A, implemented)**
+
+**Context**: MV3 workers are killable at any time; telemetry flush, aggregation, and offer refresh must survive termination.
+**Decision**: IndexedDB-backed durable task queue (`DurableTaskQueue`: `scheduledAt`/`retries`/lease + exponential backoff + dead-letter) with `chrome.alarms` as the wake trigger; exactly one in-flight lease per task type. Awaiting alone was explicitly rejected as insufficient — the write-ahead record is what closes the finding.
+**Status**: Implemented and tested (`durable-task-queue.ts`, `service-worker.ts:130-179`, kill-mid-write round-trip spec). Remaining: extend the queue to telemetry flush + offer refresh (currently savings-only `SAVE_SAVINGS_ENTRY`).
+
+### ADR-004: Cross-Tab State Synchronization — **REQUIRED before Phase 2 burns**
+
+**Context**: Popup, content script, and service worker must observe the same voucher/profile state across tabs.
+**Options**: `BroadcastChannel` (real-time, unavailable in workers) vs `chrome.storage.onChanged` (universal, storage-scoped) vs polling (wasteful).
+**Recommended**: `BroadcastChannel` tab-to-tab + `chrome.storage.onChanged` worker bridge; IndexedDB as write source-of-truth; burn-lease record for voucher double-spend prevention. Two-tab contention Playwright spec is the acceptance gate.
+
+### ADR-005: Savings History Partitioning — **PRE-DECIDED, deferred implementation**
+
+**Context**: Unbounded ledger growth degrades queries even with indexes.
+**Recommended**: Defer until ~10k entries; pre-decided shape is time-based sharding by year with an `aggregates` rollup, keeping cross-year queries rare and explicit. Scaffold the migration path during Phase 2 aggregation work; do not activate early.
+
+### ADR-006: Local-First vs. Hybrid Cloud + AI Egress Disclosure — **AMEND REQUIRED**
+
+**Context**: Community offers, ML insights, and affiliate revenue pull toward servers; the moat is local-first privacy.
+**Recommended**: Hybrid with a hard boundary — optimization, profile, and history stay local; only opt-in, anonymized, k-anonymous telemetry and versioned public-data fetches leave the device. **Amendment required**: list the AI-explanation endpoint (`generativelanguage.googleapis.com`, key-in-header or documented residual risk, prompt stripped of card/program names and raw merchant IDs per Fix F4) as an explicit, disclosed, opt-in exception — not an unstated gap. Either implement the k-anonymity/DP claims for real or remove those sentences until they are.
 
 ---
 
-### ADR-003: Durable Background Execution for MV3
-
-**Context**: MV3 service workers are killable at any time. Telemetry flush, savings aggregation, and offer refresh must survive worker termination.
-**Options**: Chrome Alarms (periodic, 1-min granularity); Background Sync (one-shot, not periodic); in-memory worker queue (lost on kill).
-**Recommended**: **IndexedDB-backed durable task queue** with state (`scheduledAt`, `retries`, `lease`) + `chrome.alarms` as the wake trigger; exponential backoff; no more than one in-flight lease per task type.
-
----
-
-### ADR-004: Cross-Tab State Synchronization
-
-**Context**: Popup, content script, and service worker must observe the same state (voucher burns, profile changes) across tabs.
-**Options**: `BroadcastChannel` (real-time, not available in service workers); `chrome.storage.onChanged` (available everywhere, storage-scoped); polling (wasteful).
-**Recommended**: **BroadcastChannel for tab-to-tab**; **`chrome.storage.onChanged` as the service-worker bridge**; treat IndexedDB as the single source of truth for writes.
-
----
-
-### ADR-005: Savings History Partitioning
-
-**Context**: Unbounded growth of `savings` entries degrades queries even with indexes.
-**Options**: single store (now); time-based sharding (per-year DBs); merchant-based sharding.
-**Recommended**: defer until ~10k entries/production signal, but **pre-decide now**: time-based sharding by year with an `aggregates` rollup, keeping cross-year queries rare and explicit.
-
----
-
-### ADR-006: Local-First vs. Hybrid Cloud
-
-**Context**: Community offers, ML insights, and affiliate revenue want server support; the product's moat is local-first privacy.
-**Recommended**: **Hybrid with a hard privacy boundary** — optimization, profile, and history stay local; only opt-in, anonymized, k-anonymous telemetry and versioned public-data fetches leave the device. Any future cloud service must pass the §64 rule ("architecture makes accidental telemetry difficult").
-
----
-
-## Conclusion
-
-PaymentsOptimizer's architecture is genuinely strong: deterministic BigInt money-math, disciplined pattern adoption (Result, saga, circuit breaker, clock injection), clean monorepo layering, and privacy as a first-class invariant. Phase 1 delivered the right _patterns_; the stabilization sweep made the _build gate_ real.
-
-The 2026-09-07 stabilization commits (up to `b62180f`, plus the gate-hardening work described here) closed the build gate: `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm lint`, and `pnpm format` now pass, Husky enforces `typecheck && test` before every commit, and CI additionally enforces format and a coverage floor. The system is now _hard to accidentally take off green again_.
-
-The highest-leverage engineering focus is now on (in order):
-
-1. **D5–D10 test depth** — fast-check financial invariants + Playwright failure-path specs; these move coverage from 64.5% toward ≥85% and cover error paths no unit test exercises today.
-2. **Durable background execution + cross-tab coordination** (Month 2–3) — closes the last MV3 lifecycle gaps.
-3. **Extract observability/resilience leaf packages** to protect `domain` from infrastructure churn.
-4. Feature expansion (the five production features defined below) only after the above, because each depends on durable analytics and clean package boundaries.
-
-**Success Metrics** (3-month horizon):
-
-- `pnpm typecheck && pnpm test && pnpm build` green on every PR (enforced by Husky + CI, not aspirational)
-- Test coverage floor enforced in CI and ratcheted from 64.5% up to ≥85%; 0 skipped resilience tests
-- P95 optimization latency <100ms for 50+ voucher profiles (CI-asserted)
-- Zero voucher double-spend / data-corruption incidents across tabs
-- Zero telemetry egress by default; PII redaction verified by tests
-
----
-
-**Document Version**: 2.2
-**Last Updated**: September 7, 2026
-**Next Review**: December 7, 2026
-
----
-
-# PaymentsOptimizer - Next 5 Features
-
-## Production Feature Brief
-
-This section extends the roadmap after Phase 1 stabilization and Phase 2 scaling are complete. These features are deliberately separate from the speculative Phase 3 concepts previously listed. They address recurring day-to-day problems for users of a payment-optimization tool, reuse the current local-first architecture, and can ship independently behind feature flags.
-
-### Selection Logic
-
-1. **Card Portfolio ROI Advisor**: users need to know whether a card is worth retaining, not only which card wins one transaction.
-2. **Billing-Cycle-Aware Optimization**: timing, statement dates, and milestone deadlines materially affect value.
-3. **Recurring Charge Auditor**: recurring spend is repeatedly paid without being re-optimized.
-4. **Post-Purchase Price-Drop Guard**: an optimization is incomplete if the purchase becomes cheaper immediately afterward.
-5. **One-Tap Smart Checkout**: a recommendation has limited value if users abandon it during checkout.
-
-Together, these features move PaymentsOptimizer from a recommendation engine toward a local financial-assistance workflow that executes safe, user-approved actions and protects value after checkout.
-
-### Global Constraints
-
-1. **Local-first**: all new data, including ROI calculations, subscription detections, billing settings, and price-watch state, remains in IndexedDB by default. Network calls are public-data-only, circuit-breaker-protected, and must degrade to `feature unavailable` without breaking the core optimizer.
-2. **Financial correctness**: all monetary values use existing `BigInt` branded minor-unit types. No floating-point currency logic may be introduced.
-3. **Durable background work**: every scheduled job uses `chrome.alarms` plus the IndexedDB-backed `DurableTaskQueue`; no ad hoc timers or in-memory cron loops.
-4. **Feature flags**: each feature is independently feature-flagged and defaults to `false` in production until acceptance tests and a two-week internal dogfood period are complete.
-5. **Explainability**: every inferred subscription, ROI verdict, timing recommendation, or post-purchase alert exposes deterministic reasoning in the UI through a `Why am I seeing this?` affordance.
-6. **No autonomous financial execution**: the extension may recommend, prepare, or apply a user-approved coupon. It must not submit payments, enter OTPs/CVVs, purchase gift cards, or store/transmit raw PAN data.
-7. **Failure semantics**: failed network calls, stale merchant selectors, incomplete data, and expired watches must fail closed and return structured errors. They must never fabricate a successful discount, price result, or payment action.
-
-### Common Feature Contract
-
-Each feature below is a self-contained implementation brief with use cases, user stories, data model, deterministic logic, UX, architecture, edge cases, privacy, implementation tasks, definition of done, success metrics, and rollout controls.
-
-## Feature 1 - Card Portfolio ROI and Annual-Fee Advisor
-
-### Use Cases
-
-- Determine whether a card's realized rewards and manually recorded benefits exceed its annual fee.
-- Identify cards that are unused, underperforming, or candidates for downgrade.
-- Warn users when a fee-waiver threshold is mathematically unlikely to be reached before the window closes.
-
-### User Stories
-
-- As a multi-card user, I want a per-card scorecard showing spend, rewards, benefits, fee, and net value.
-- As a user approaching a fee-waiver threshold, I want the exact amount and days remaining.
-- As a user, I want the verdict explanation to be derived from the same numbers displayed in the scorecard.
-
-### Data Model
-
-```typescript
-interface CardAnnualCost {
-  cardId: string;
-  annualFee: Money;
-  feeWaiverThreshold?: Money;
-  feeWaiverWindowStart: number;
-  feeWaiverWindowEnd: number;
-}
-
-interface CardBenefitEntry {
-  id: string;
-  cardId: string;
-  value: Money;
-  category: 'lounge' | 'insurance' | 'voucher' | 'other';
-  occurredAt: number;
-  note?: string;
-}
-
-interface CardROISnapshot {
-  cardId: string;
-  periodStart: number;
-  periodEnd: number;
-  totalSpend: Money;
-  totalRewards: Money;
-  totalBenefits: Money;
-  timesUsedAsOptimalStrategy: number;
-  netValue: Money;
-  verdict: 'keep' | 'reconsider' | 'downgrade-candidate';
-  reasoning: string[];
-  generatedAt: number;
-}
-```
-
-### Algorithm and Logic
-
-1. The monthly aggregation worker queries the indexed savings repository for the trailing 12 months, or the actual active period for newer cards.
-2. It sums card-attributed rewards and manually entered `CardBenefitEntry` values. Benefits are never inferred from page content or telemetry.
-3. It computes `netValue = rewards + benefits - annualFee`, using one currency and `BigInt` arithmetic.
-4. A positive net value with at least 12 optimal uses yields `keep`; a positive net value with fewer uses yields `reconsider`; zero or negative net value yields `downgrade-candidate`.
-5. Reasoning bullets are generated by the same pure function that returns the numeric scorecard, preventing narrative/math divergence.
-6. Fee-waiver risk is true when `remainingThreshold > averageDailySpend * daysLeft` and `daysLeft < 30`.
-
-### UX and Edge Cases
-
-- Add a `Portfolio` tab with verdict chips, net value, 12-month trend, and fee-waiver progress.
-- Show a banner only on a state transition to `downgrade-candidate` or fee-waiver risk; do not nag on every render.
-- Cards newer than 12 months show `partial year` and prorated fee comparison.
-- No-fee cards show usage and benefits without a keep/downgrade verdict.
-- Removing a card stops future aggregation but preserves historical snapshots and benefits.
-
-### Architecture and Privacy
-
-- Reuse the Phase 2 aggregation worker and Phase 1 savings indexes; do not create a second scanner.
-- Add an IndexedDB store and migration for annual-cost settings, benefit entries, and snapshots.
-- Keep card IDs/nicknames local; never include card numbers or personal identifiers in logs or telemetry.
-
-### Implementation Tasks
-
-- [ ] Define types, repositories, migration, and feature flag `portfolio_roi_advisor`.
-- [ ] Extend the aggregation worker with trailing-period and partial-year calculations.
-- [ ] Implement pure verdict, proration, fee-waiver-risk, and reasoning functions.
-- [ ] Add manual benefit-entry form with validation and edit/delete support.
-- [ ] Build Portfolio list/detail views, trend visualization, and state-change banner.
-- [ ] Add unit, migration, integration, and feature-flag tests.
-
-### Definition of Done and Metrics
-
-- [ ] All three verdicts, partial-year proration, no-fee behavior, and fee-waiver warnings have deterministic tests.
-- [ ] Scorecard numbers and reasoning are produced by the same function.
-- [ ] No card PII appears in snapshots, diagnostics, or telemetry.
-- [ ] Track Portfolio-tab adoption and the rate at which users mark a downgrade candidate inactive.
-
-### Rollout
-
-Flag off -> internal dogfood with consent for two weeks -> 10% rollout -> review verdict/support feedback -> 100% rollout.
-
-## Feature 2 - Billing-Cycle-Aware Best-Time Optimization
-
-### Use Cases and User Stories
-
-- Help users understand days until a statement and payment due date.
-- Break near-ties using interest-free float or an imminent milestone.
-- Explain when a slightly worse immediate discount completes a valuable milestone.
-
-### Data Model
-
-```typescript
-interface CardBillingCycle {
-  cardId: string;
-  statementDay: number;
-  paymentDueDay: number;
-  currentCycleSpend: Money;
-  milestones: Array<{
-    id: string;
-    threshold: Money;
-    reward: Money;
-    windowEnd: number;
-  }>;
-}
-
-interface TimingAdjustedStrategy extends UnifiedTransactionStrategy {
-  daysUntilBillDue: number;
-  interestFreeFloatDays: number;
-  milestoneImpact?: {
-    milestoneId: string;
-    closesInDays: number;
-    reward: Money;
-    amountStillNeeded: Money;
-  };
-}
-```
-
-### Algorithm and Logic
-
-1. Users optionally enter statement and payment-due days; the app never infers them from transactions.
-2. `TimingAwareOptimizer` decorates `UnifiedBenefitOptimizer`, preserving its output when no billing data exists.
-3. For each candidate card, calculate days to the next statement and then to payment due using the injected `Clock` and local timezone rules.
-4. Only when two candidates are within configurable `epsilon` (default 2% of cart total) may float days act as a tie-breaker.
-5. Detect milestone completion as a separately labeled impact, not hidden inside a score.
-6. When multiple milestones apply, show the closest-to-completion milestone and its explicit trade-off.
-
-### UX, Architecture, and Edge Cases
-
-- Add optional statement/due fields to card setup and a dashboard `Milestones closing soon` widget.
-- Recommendation cards explain the deciding factor, including float-day difference and milestone amount.
-- Missing billing data must produce byte-for-byte equivalent optimizer output to the pre-feature behavior.
-- A milestone closing today remains valid through local end-of-day.
-- Use `Clock` for all date arithmetic; never use direct `Date.now()` in decision logic.
-
-### Implementation Tasks
-
-- [ ] Add billing-cycle types, repository, migration, validation, and flag `billing_cycle_optimization`.
-- [ ] Implement pure date/float/milestone calculations and `TimingAwareOptimizer` decorator.
-- [ ] Add card setup fields, milestone widget, recommendation explanation, and accessibility states.
-- [ ] Add regression, boundary-epsilon, timezone, and missing-data tests.
-
-### Definition of Done, Metrics, and Rollout
-
-- [ ] No billing data means identical output; epsilon boundaries are tested.
-- [ ] Milestone overrides are never silent and always show a reason.
-- [ ] Track billing-field completion and nudge follow-through.
-- [ ] Ship fields first with behavior disabled, then enable for opted-in users after two weeks.
-
-## Feature 3 - Recurring Charge and Subscription Auditor
-
-### Use Cases and User Stories
-
-- Detect likely recurring charges from local savings history without bank connectivity.
-- Show monthly and annual recurring spend in one place.
-- Identify a better card for a recurring merchant and estimate annual savings.
-- Let users confirm, dismiss, or mark a subscription cancelled so the detector does not repeatedly resurface it.
-
-### Data Model
-
-```typescript
-interface DetectedSubscription {
-  id: string;
-  merchantId: string;
-  approximateAmount: Money;
-  amountVariance: Money;
-  cadence: 'weekly' | 'monthly' | 'annual' | 'irregular';
-  occurrences: Array<{ timestamp: number; amount: Money; cardId: string }>;
-  confidence: number;
-  status: 'active' | 'user-dismissed' | 'user-confirmed-cancelled' | 'possibly-cancelled';
-  currentCardId: string;
-  betterCardId?: string;
-  potentialAnnualSavings?: Money;
-  lastEvaluatedAt: number;
-}
-```
-
-### Deterministic Detection Algorithm
-
-1. Query savings by `merchantId`; require at least three occurrences.
-2. Calculate consecutive intervals and classify cadence by median interval: approximately 7, 30, or 365 days with documented tolerances.
-3. Calculate confidence as `0.4` amount stability + `0.4` interval stability + `0.2` for six or more occurrences. Surface only confidence `>= 0.6`.
-4. Re-run the optimizer for the observed recurring amount and compare held cards only. Never recommend a card absent from the user profile.
-5. Estimate annual savings using cadence and per-occurrence improvement; preserve the source values for explainability.
-6. If the expected next charge is absent after `1.5 * cadenceInterval`, transition to `possibly-cancelled` and request confirmation.
-
-### UX, Architecture, and Privacy
-
-- Add a `Subscriptions` section with total monthly/annual cost and per-merchant details.
-- Actions: `Confirm`, `Already cancelled`, and `Not a subscription`; persist feedback by merchant/pattern.
-- Use the indexed savings repository and Phase 2 sharding; reuse the core optimizer for card comparison.
-- Detection is entirely local. Hashed merchant IDs may enter opt-in telemetry only through the existing privacy pipeline.
-
-### Edge Cases and Implementation Tasks
-
-- Variable grocery-like amounts should fall below confidence and remain hidden.
-- A single held card must not produce a self-comparison or a fake alternative.
-- Dismissed/cancelled records must not reappear without a meaningful new pattern.
-- [ ] Define store, migration, repository, and flag `subscription_auditor`.
-- [ ] Implement pure cadence, variance, confidence, and staleness functions.
-- [ ] Implement held-card comparison and annualized savings calculation.
-- [ ] Build list, detail, feedback, and stale-state UI.
-- [ ] Add deterministic fixtures for clean, noisy, variable, cancelled, and single-card cases.
-
-### Definition of Done, Metrics, and Rollout
-
-- [ ] Detection precision tests reject noisy and amount-varying false positives.
-- [ ] Feedback persists and controls future surfacing.
-- [ ] Suggestions are limited to cards actually owned by the user.
-- [ ] Track surfaced subscriptions, acted-on switch suggestions, and confirmed cancellations.
-- [ ] Ship read-only detection first; enable card-switch suggestions only after two weeks of precision feedback.
-
-## Feature 4 - Post-Purchase Price-Drop and Refund Guard
-
-### Use Cases and User Stories
-
-- Watch an explicitly selected purchase for a limited price-adjustment window.
-- Notify users when the same product becomes materially cheaper.
-- Surface a card's documented price-protection terms and claim deadline without inventing procedures.
-
-### Data Model
-
-```typescript
-interface PriceWatch {
-  id: string;
-  merchantId: string;
-  productUrlOrSku: string;
-  purchasePrice: Money;
-  purchaseTimestamp: number;
-  watchWindowDays: number;
-  lastCheckedAt?: number;
-  lowestSeenPrice?: Money;
-  status: 'watching' | 'drop-detected' | 'window-expired' | 'user-dismissed';
-  cardProtectionTermsRef?: string;
-  notificationSentAt?: number;
-}
-```
-
-### Algorithm and Reliability Rules
-
-1. Offer an explicit opt-in after a tracked purchase; do not silently watch all browsing or purchases.
-2. Use `DurableTaskQueue` with decaying cadence: daily for three days, then every three days until expiry.
-3. Route every external price check through the Phase 1 `CircuitBreaker` and a concrete, allow-listed data source.
-4. Treat drops below a documented minimum, such as 1%, as noise; calculate claimable difference with same-currency `Money` values.
-5. Read claim instructions only from versioned static card-protection terms; never generate a claim procedure.
-6. On expiry, cancel future tasks. A failed fetch leaves the watch in `watching` and never produces a false `no drop` result.
-
-### UX, Architecture, and Edge Cases
-
-- Add opt-in prompt, `Price Watches` list, days remaining, current/lowest price, and one-shot drop notification.
-- Duplicate merchant+SKU watches must be merged or rejected.
-- Changed URLs/selectors fail closed and write a diagnostic error.
-- Currency mismatch disables comparison with an explicit unsupported message.
-- The feature requires a formal price-source decision and a maintained card-terms dataset before implementation.
-
-### Implementation Tasks
-
-- [ ] Write ADR and data-source spike for each supported merchant.
-- [ ] Define store, migration, repository, and flag `price_drop_guard`.
-- [ ] Implement durable decaying schedule and expiry cancellation.
-- [ ] Build versioned price-protection terms dataset and provenance display.
-- [ ] Add opt-in UI, watch list, notifications, and diagnostics.
-- [ ] Add tests for failed checks, expiry, deduplication, currency mismatch, and one-shot notifications.
-
-### Definition of Done, Metrics, and Rollout
-
-- [ ] No task exists beyond the watch window.
-- [ ] Failed checks never change status to `no drop` or fabricate a price.
-- [ ] A given drop notifies exactly once.
-- [ ] Track eligible opt-in rate and user-reported successful claims.
-- [ ] Pilot only with a small allow-list of merchants and cards with reliable data and documented terms.
-
-## Feature 5 - One-Tap Smart Checkout
-
-### Scope and Security Boundary
-
-This feature is deliberately split into two independently flagged tiers:
-
-- **Tier A: coupon/voucher auto-apply**, default candidate for rollout on known merchant adapters.
-- **Tier B: card-selection assistance**, opt-in and limited to highlighting the user's recommended native browser payment method.
-
-The extension must never read, store, transmit, or inject raw PAN, CVV, PIN, or OTP data. Browser-native payment autofill remains the only component allowed to handle those credentials.
-
-### Data Model
-
-```typescript
-interface CheckoutAction {
-  id: string;
-  merchantId: string;
-  cartId: string;
-  actions: Array<{
-    type: 'voucher-applied' | 'coupon-field-located' | 'field-focused';
-    selectorHash: string;
-    timestamp: number;
-    success: boolean;
-    errorCode?: string;
-  }>;
-  userConfirmedCardHighlight: boolean;
-}
-```
-
-### Algorithm and UX
-
-1. Extend registered merchant adapters with a coupon field selector and optional label-text validation; never use generic coupon-shaped DOM heuristics on unknown sites.
-2. Add Zod-validated, versioned messages `APPLY_VOUCHER` and `LOCATE_COUPON_FIELD` through the existing `DomainSerializer` boundary.
-3. Tier A locates, fills, and submits the merchant's own apply action only after the user clicks `Apply for me`; show a toast with success/failure.
-4. Tier B highlights the recommended native browser payment method after explicit per-checkout confirmation; extension code never accesses card data.
-5. Log actions locally in `CheckoutAction` and show a `Checkout Activity` diagnostics screen.
-6. If a selector is stale, multiple fields are ambiguous, or the merchant rejects the code, show a manual-copy fallback and the merchant error. Never claim success based only on DOM insertion.
-
-### Implementation Tasks
-
-- [ ] Add adapter selector metadata and label self-checks.
-- [ ] Add and validate `APPLY_VOUCHER` and `LOCATE_COUPON_FIELD` messages.
-- [ ] Implement Tier A apply flow, merchant response detection, toast, and manual fallback.
-- [ ] Implement local action log and Checkout Activity screen.
-- [ ] Implement Tier B native-card highlight behind separate flag `smart_checkout_card_highlight`.
-- [ ] Perform dedicated security review and static scan for PAN access.
-- [ ] Use separate flag `smart_checkout_autoapply` for Tier A.
-
-### Definition of Done, Metrics, and Rollout
-
-- [ ] Static review proves no code path handles raw card numbers.
-- [ ] Stale selectors, malformed messages, ambiguous fields, and merchant rejection are tested.
-- [ ] Voucher-apply success means merchant acceptance, not merely field insertion.
-- [ ] Track accepted apply rate and reduction in recommended-but-unused strategies.
-- [ ] Roll out Tier A to 3–5 high-traffic adapters first; keep Tier B opt-in indefinitely unless trust data justifies change.
-
-## Cross-Feature Sequencing Notes
-
-- Features 1 and 3 share the aggregation worker; implement one aggregation pipeline with separate projections, not parallel scanners.
-- Feature 2 is the lowest-risk first shipment because it is additive and regression-testable.
-- Feature 4 needs an external data-source decision early, despite being implemented later.
-- Feature 5 has the highest security surface; schedule review before broad implementation.
-- Risk-adjusted order: **2 -> 1 -> 3 -> 5 Tier A -> 4 -> 5 Tier B**.
-
----
-
-## Detailed Phase-Based Execution Plan
-
-This plan assumes Phase 1 stabilization and Phase 2 scaling are complete, including the green build gate, indexed/sharded savings repository, migration runner, durable task queue, cross-tab coordination, and background aggregation foundation. If any of those assumptions are false, the work must return to the stabilization gates in the earlier roadmap before feature development begins.
-
-### Phase 0 - Readiness, Architecture, and Measurement
-
-**Duration**: 1 week
-**Objective**: Freeze contracts and prove that the platform can accept five independent feature slices without creating five incompatible persistence and scheduling systems.
-
-#### Workstreams
-
-1. **Platform readiness audit**
-   - Verify `pnpm typecheck`, `pnpm test`, `pnpm lint`, `pnpm build`, E2E, and coverage gates are required checks.
-   - Confirm `DurableTaskQueue` supports idempotency keys, retry count, lease/claim state, exponential backoff, cancellation, and dead-letter diagnostics.
-   - Confirm the aggregation worker exposes a reusable projection interface rather than a feature-specific implementation.
-   - Confirm all persisted records carry schema version and migration coverage.
-
-2. **Feature-flag foundation**
-   - Define a typed registry of flags with owner, default, rollout scope, expiry date, and kill-switch behavior.
-   - Ensure a disabled flag prevents UI entry points, background jobs, migrations that are not needed, and outbound network work where possible.
-   - Add diagnostics showing enabled flags without exposing user financial data.
-
-3. **Shared domain contracts**
-   - Standardize `Money`, `Clock`, `Result`, error codes, provenance, and explanation-trace conventions across all five features.
-   - Define a common `FeatureEvaluationTrace` containing inputs, deterministic rule IDs, outputs, data freshness, and engine/data versions.
-   - Define a common `FeatureJob` interface for scheduled projections and external checks.
-
-4. **Security and privacy baseline**
-   - Threat-model DOM manipulation, malicious merchant pages, malicious datasets, corrupted local records, and accidental telemetry egress.
-   - Add bundle tests that reject PAN/CVV/OTP identifiers and unauthorized endpoint strings.
-   - Review extension permissions before adding any capability; prefer no new permission.
-
-5. **Observability baseline**
-   - Add feature-scoped event names and redacted metrics: evaluation count, duration bucket, failure code, disabled/fallback count, and user action.
-   - Keep telemetry off by default and aggregate locally until opt-in policy is applied.
-   - Add dashboards or local diagnostics for job backlog, retry counts, migration version, and feature flag state.
-
-#### Phase 0 Deliverables
-
-- [ ] Platform readiness checklist signed off.
-- [ ] Typed feature-flag registry and kill switches.
-- [ ] Shared feature trace and durable-job contracts.
-- [ ] ADRs approved for price data source and checkout automation boundary.
-- [ ] Baseline performance, storage, and privacy tests committed.
-
-#### Phase 0 Exit Gate
-
-No feature begins implementation until the team can demonstrate that a disabled feature creates no user-visible behavior, no scheduled work, and no network request, and that every feature can be rolled back by flag without data loss.
-
----
-
-### Phase 1 - Billing-Cycle-Aware Optimization
-
-**Duration**: Weeks 2–4
-**Priority**: First feature; lowest implementation risk and strongest regression-testability.
-**Owner profile**: Optimization/domain engineer plus one UI engineer.
-
-#### Week 2: Domain and Persistence
-
-- [ ] Add `CardBillingCycle`, milestone, and validation schemas.
-- [ ] Add migration and repository methods with strict day-of-month validation.
-- [ ] Define local-timezone semantics for statement close, due date, and end-of-day milestone expiry.
-- [ ] Implement pure functions for next statement date, due date, float days, milestone remaining, and epsilon comparison.
-- [ ] Add `TimingAwareOptimizer` decorator without modifying the existing optimizer's candidate generation.
-
-#### Week 3: UI and Explanation
-
-- [ ] Add optional billing fields to card setup and editing.
-- [ ] Add milestone-closing-soon projection to the dashboard.
-- [ ] Add recommendation sub-line only when timing changes the displayed rationale.
-- [ ] Add explicit effective-cost, immediate-savings, float, and milestone values; never hide monetary values in a subjective score.
-- [ ] Add accessible labels, keyboard navigation, empty states, invalid-date states, and local-timezone copy.
-
-#### Week 4: Verification and Dogfood
-
-- [ ] Golden-test identical output with no billing data.
-- [ ] Property-test epsilon boundary, date rollover, leap year, end-of-day, and multiple milestone cases.
-- [ ] Run benchmark to prove no meaningful regression in optimization latency.
-- [ ] Enable for internal dogfood, collect only opt-in aggregate behavior, and review false or confusing explanations.
-- [ ] Enable 10% rollout only after two weeks of stable dogfood.
-
-#### Phase 1 Exit Gate
-
-- [ ] Zero behavior difference for profiles without billing-cycle data.
-- [ ] P95 optimization remains under target.
-- [ ] Every timing-driven recommendation includes a deterministic explanation.
-- [ ] Flag rollback tested and migration remains safe when feature is disabled.
-
----
-
-### Phase 2 - Portfolio ROI Advisor
-
-**Duration**: Weeks 5–8
-**Priority**: High user value; depends on stable aggregation and historical savings semantics.
-**Owner profile**: Storage/analytics engineer plus UI engineer.
-
-#### Week 5: Financial Model and Store
-
-- [ ] Define annual-fee, fee-waiver, manual-benefit, and ROI snapshot schemas.
-- [ ] Add migration with forward validation and rollback/backup behavior.
-- [ ] Decide the exact attribution rule for rewards when a strategy has multiple payment steps.
-- [ ] Add pure functions for prorated fee, net value, verdict, fee-waiver risk, and reasoning bullets.
-- [ ] Add golden fixtures for no-fee, new card, positive ROI, negative ROI, and removed-card history.
-
-#### Week 6: Aggregation Projection
-
-- [ ] Extend the existing aggregation worker with a card ROI projection, not a parallel scheduler.
-- [ ] Use indexed/sharded historical queries and bounded periods.
-- [ ] Make projection idempotent by `(cardId, periodEnd, dataVersion)` key.
-- [ ] Record calculation version so historical snapshots can be recomputed after rule changes.
-- [ ] Add job retry, cancellation, and diagnostics for partial projection failures.
-
-#### Week 7: User Inputs and UI
-
-- [ ] Build manual benefit-entry form with amount, category, date, and optional note.
-- [ ] Add Portfolio tab, detail page, trend chart, fee-waiver progress, and partial-year label.
-- [ ] Add state-change-only banners with persisted notification state.
-- [ ] Add export/diagnostic redaction tests for card labels and benefit notes.
-
-#### Week 8: Verification and Dogfood
-
-- [ ] Reconcile snapshot totals against seeded savings history.
-- [ ] Test idempotent reruns and migration from empty, old, and partially populated stores.
-- [ ] Verify no card PII is written to telemetry or logs.
-- [ ] Dogfood with synthetic and consenting real profiles for two weeks before 10% rollout.
-
-#### Phase 2 Exit Gate
-
-- [ ] ROI snapshots reconcile to source savings and manual benefits.
-- [ ] Reasoning and values are generated from one calculation result.
-- [ ] Projection is idempotent and survives service-worker restarts.
-- [ ] No repeated banner on unchanged verdict state.
-
----
-
-### Phase 3 - Recurring Charge Auditor
-
-**Duration**: Weeks 9–12
-**Priority**: High value, but detection precision must be earned before recommendations are enabled.
-**Owner profile**: Data/algorithm engineer plus UI engineer.
-
-#### Week 9: Detection Engine
-
-- [ ] Define charge observation input independent of UI/storage.
-- [ ] Implement interval median, amount variance, cadence classification, confidence scoring, and staleness functions.
-- [ ] Establish precision-oriented thresholds using deterministic fixture sets.
-- [ ] Add negative feedback model scoped to merchant/pattern; do not silently learn global behavior.
-
-#### Week 10: Persistence and Better-Card Evaluation
-
-- [ ] Add subscription store, migration, status transitions, and feedback repository.
-- [ ] Implement held-card-only comparison using a bounded optimizer input.
-- [ ] Annualize savings using cadence and preserve calculation trace.
-- [ ] Add idempotent scheduled detection projection keyed by history watermark.
-
-#### Week 11: UI and Safety States
-
-- [ ] Build subscription list, total recurring spend summary, and detail view.
-- [ ] Add confirm, dismiss, not-a-subscription, and possibly-cancelled actions.
-- [ ] Show detection evidence: occurrence count, cadence, amount range, and confidence reason.
-- [ ] Ensure low-confidence detections never appear in the primary list.
-
-#### Week 12: Precision Review
-
-- [ ] Run seeded precision/recall evaluation against representative merchant patterns.
-- [ ] Dogfood read-only detection for two weeks.
-- [ ] Review false-positive rate before enabling switch-card recommendations.
-- [ ] Add a kill switch that disables all detection jobs without deleting user feedback/history.
-
-#### Phase 3 Exit Gate
-
-- [ ] Detection meets a documented precision threshold agreed by product and engineering.
-- [ ] Dismissed and cancelled subscriptions remain suppressed.
-- [ ] Better-card suggestions only use owned cards and include annualized math.
-- [ ] Staleness never claims cancellation as fact; it asks for confirmation.
-
----
-
-### Phase 4 - Smart Checkout Tier A: Voucher and Coupon Apply
-
-**Duration**: Weeks 13–16
-**Priority**: High user value, high browser-security sensitivity.
-**Owner profile**: Extension/security engineer plus merchant-adapter engineer.
-
-#### Week 13: Threat Model and Adapter Contract
-
-- [ ] Approve dedicated checkout security review before implementation.
-- [ ] Define adapter metadata for coupon fields, label signals, apply action, and merchant response detection.
-- [ ] Limit capability to allow-listed merchant adapters; unknown pages always use manual copy.
-- [ ] Add message schemas and serializer versions for `APPLY_VOUCHER` and `LOCATE_COUPON_FIELD`.
-
-#### Week 14: Safe DOM Interaction
-
-- [ ] Implement field discovery with selector plus label self-check.
-- [ ] Require user click for every apply action.
-- [ ] Detect merchant acceptance/rejection after submission.
-- [ ] Make all DOM operations timeout-bounded and abortable.
-- [ ] Return structured fallback states: not found, ambiguous, rejected, stale adapter, or applied.
-
-#### Week 15: Activity and Recovery UX
-
-- [ ] Add on-page toast with exact action and result.
-- [ ] Add Checkout Activity screen with local redacted action history.
-- [ ] Add manual-copy fallback and never claim success on insertion alone.
-- [ ] Add adapter-level diagnostics for selector drift.
-
-#### Week 16: Security Verification and Pilot
-
-- [ ] Static scan confirms no PAN/CVV/OTP access or storage.
-- [ ] Test malicious page messages, malformed payloads, selector replacement, multiple coupon fields, and merchant rejection.
-- [ ] Pilot with 3–5 high-traffic adapters.
-- [ ] Monitor accepted-apply rate and support incidents before expanding.
-
-#### Phase 4 Exit Gate
-
-- [ ] Every incoming message is schema-validated.
-- [ ] No raw payment credentials are touched.
-- [ ] Accepted-apply rate is measured separately from DOM-fill rate.
-- [ ] Unknown/changed pages fail to manual copy without unsafe guessing.
-
----
-
-### Phase 5 - Post-Purchase Price-Drop Guard
-
-**Duration**: Weeks 17–21
-**Priority**: Valuable but dependent on external price data and the strongest operational uncertainty.
-**Owner profile**: Integrations engineer, data-maintenance owner, and privacy/security reviewer.
-
-#### Week 17: External Data-Source Decision
-
-- [ ] Complete merchant-by-merchant price-source spike.
-- [ ] Document allowed endpoints, terms of use, authentication, rate limits, freshness, and failure semantics.
-- [ ] Reject implementation if a source requires broad browsing history, account credentials, or prohibited scraping.
-- [ ] Approve ADR with fallback and no-source behavior.
-
-#### Week 18: Watch Domain and Scheduling
-
-- [ ] Define `PriceWatch`, terms dataset, provenance, migration, and repository.
-- [ ] Implement idempotent scheduling keys and decaying check cadence.
-- [ ] Add expiry cancellation and one-shot notification state.
-- [ ] Route all calls through `CircuitBreaker`, timeout, retry, and public endpoint allowlist.
-
-#### Week 19: Terms and Comparison
-
-- [ ] Build versioned static price-protection terms for the pilot cards.
-- [ ] Implement same-currency comparison and minimum-drop threshold.
-- [ ] Ensure failed fetch leaves state unchanged except diagnostics/last-attempt metadata.
-- [ ] Add deduplication by merchant and SKU.
-
-#### Week 20: UI and User Controls
-
-- [ ] Add opt-in post-purchase prompt and explicit watch consent.
-- [ ] Build Price Watches list with expiry and status.
-- [ ] Add claim link/instructions only from the maintained terms dataset.
-- [ ] Add dismiss, stop watching, and delete controls.
-
-#### Week 21: Pilot and Operational Review
-
-- [ ] Pilot with a small merchant/card allow-list.
-- [ ] Verify no task survives beyond expiry and no duplicate notification occurs.
-- [ ] Review network volume, false drops, stale product identifiers, and support burden.
-- [ ] Keep flag off by default until operational evidence supports expansion.
-
-#### Phase 5 Exit Gate
-
-- [ ] Approved price source and terms provenance exist for every enabled merchant/card.
-- [ ] No failed fetch produces a false result.
-- [ ] Price watches are opt-in, bounded, cancellable, and locally represented.
-- [ ] External dependency failure leaves the core optimizer fully functional.
-
----
-
-### Phase 6 - Smart Checkout Tier B: Card-Selection Assistance
-
-**Duration**: Weeks 22–24+
-**Priority**: Last because it is trust-sensitive and must not expand credential-handling scope.
-**Owner profile**: Extension/security engineer with browser-platform review.
-
-- [ ] Confirm browser-native autofill integration does not require raw PAN access or new broad permissions.
-- [ ] Define the capability as visual recommendation/highlighting only, not credential injection.
-- [ ] Add explicit per-checkout confirmation and an independent flag `smart_checkout_card_highlight`.
-- [ ] Add tests proving extension code cannot read or serialize payment fields.
-- [ ] Add settings copy, permission explanation, activity log, and immediate disable control.
-- [ ] Conduct security review and internal dogfood indefinitely before any wider rollout.
-
-#### Phase 6 Exit Gate
-
-- [ ] No raw card data crosses the extension boundary.
-- [ ] User confirms each use.
-- [ ] Browser-native payment UX remains the source of truth.
-- [ ] Security review approves the implementation and rollback path.
-
----
-
-## Program-Level Definition of Done
-
-The five-feature program is complete only when all of the following are true:
-
-- [ ] All features have independent flags, owners, migration versions, rollback procedures, and support runbooks.
-- [ ] Every persisted record is versioned, validated, locally stored, and covered by migration tests.
-- [ ] Every scheduled task is durable, idempotent, cancelable, retry-bounded, and visible in diagnostics.
-- [ ] Every monetary output is derived from branded `BigInt` values and has a calculation trace.
-- [ ] Every inference has an explainable evidence view and a user override/dismissal path.
-- [ ] Network-dependent features fail closed and never degrade the core optimizer.
-- [ ] Checkout functionality never handles raw PAN/CVV/OTP data.
-- [ ] Test gates include unit, property, migration, integration, E2E, security, performance, and accessibility coverage where applicable.
-- [ ] Each feature completes a two-week internal dogfood period before production enablement.
-
-## Program-Level Metrics
-
-### Reliability and Correctness
-
-- Zero data-corruption or voucher double-spend incidents.
-- 100% successful migration tests from the previous schema version.
-- Zero failed network calls causing core optimization failure.
-- Less than 1% scheduled-job duplicate execution after idempotency handling.
-
-### Performance
-
-- P95 core optimization remains below 100ms for complex profiles.
-- Background projection completion within six hours of scheduled execution.
-- Subscription and portfolio queries remain bounded by indexes/shards and stay below 100ms in representative datasets.
-- Price checks respect merchant rate limits and configured request budgets.
-
-### Trust and Privacy
-
-- Zero raw payment credential occurrences in built bundles, logs, telemetry, and diagnostics.
-- Feature explanation shown for 100% of surfaced verdicts, timing nudges, detections, and alerts.
-- Feature-specific dismissals are respected without repeated unwanted prompts.
-- Opt-in telemetry remains disabled by default and contains only approved buckets/hashes.
-
-### Product Value
-
-- Billing-cycle users follow or dismiss timing recommendations with measurable intent.
-- Portfolio users review scorecards and act on fee/downgrade insights.
-- Subscription users confirm meaningful recurring charges or act on better-card suggestions.
-- Price-watch users opt in and report actionable claims.
-- Checkout users achieve accepted coupon applications, not merely DOM insertion.
-
-## Release Governance
-
-Each feature release requires a short decision record containing:
-
-1. Feature flag and rollback command.
-2. Data schema and migration version.
-3. Network endpoints and circuit-breaker policy, if any.
-4. Threat model and privacy review.
-5. Test evidence and known skipped tests.
-6. Dogfood dates, acceptance owner, and rollout percentages.
-7. Support diagnostic codes and user-facing fallback behavior.
-
-The program should optimize for trust over feature count. A feature that produces a plausible but incorrect financial conclusion, silently touches checkout data, or repeatedly surfaces false detections is a product regression even if its happy-path conversion metric is strong.
+**Document Version**: 3.0
+**Last Updated**: September 9, 2026 (`842a920`)
+**Next Review**: December 9, 2026 (or on Phase 1 exit, whichever comes first)
+**Success Metrics (3-month horizon)**: green gate required on every PR; coverage floor 60→85; P95 <100ms for 50+ vouchers CI-asserted; zero double-spend/data-corruption across tabs; zero telemetry egress by default with pre-flush redaction proven by tests.

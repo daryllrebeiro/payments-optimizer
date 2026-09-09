@@ -20,7 +20,11 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit production dependencies (non-blocking until clean cycle)
+        run: pnpm audit --prod
+        continue-on-error: true
 
       - name: Run type checking
         run: pnpm typecheck

@@ -7,7 +7,7 @@
  * in CI on every change, not just once.
  */
 import { describe, it, expect } from 'vitest';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 const ROOT = resolve(__dirname, '..', '..');
@@ -117,5 +117,39 @@ describe('F8 — test-fixtures stays out of the production extension graph', () 
     // Even devDependencies should stay clean now — specs use the local
     // card catalog instead.
     expect(pkg.devDependencies ?? {}).not.toHaveProperty('@payments-optimizer/test-fixtures');
+  });
+});
+
+describe('Fix S-09 — store build posture', () => {
+  it('vite store builds are minified', () => {
+    const config = readFileSync(join(ROOT, 'apps', 'extension', 'vite.config.ts'), 'utf8');
+    expect(config).toMatch(/minify:\s*true/);
+  });
+
+  it('built bundle (when present) carries no fixture card data or non-allowlisted endpoints', () => {
+    const dist = join(ROOT, 'apps', 'extension', 'dist');
+    const candidates = ['background.js', 'content-script.js']
+      .map((f) => join(dist, f))
+      .filter((f) => existsSync(f));
+    if (candidates.length === 0) return; // build not run in this environment
+    const ALLOWED = ['generativelanguage.googleapis.com', 'fonts.googleapis.com'];
+    for (const file of candidates) {
+      const bundle = readFileSync(file, 'utf8');
+      expect(bundle).not.toMatch(/test-fixture/i);
+      for (const m of bundle.matchAll(/https:\/\/([A-Za-z0-9.-]+)/g)) {
+        expect(ALLOWED).toContain(m[1]);
+      }
+    }
+  });
+});
+
+describe('Fix S-01 — key material stays out of local scope by default', () => {
+  it('no extension source writes the exact geminiApiKey key except the opt-in store', () => {
+    const exactKey = /['"]geminiApiKey['"]/;
+    const offenders = walk(EXT_SRC).filter((f) => {
+      if (f.endsWith('api-key-store.ts') || f.endsWith('.spec.ts')) return false;
+      return exactKey.test(readFileSync(f, 'utf8'));
+    });
+    expect(offenders).toEqual([]);
   });
 });
