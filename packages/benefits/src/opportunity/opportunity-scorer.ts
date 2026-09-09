@@ -1,24 +1,22 @@
-import { Money, OptimizationPreferences } from '@payments-optimizer/domain';
+import { Money, OptimizationPreferences, minorToMajor } from '@payments-optimizer/domain';
 import { UserVoucher } from '../domain/types.js';
 
 /**
- * Safely converts a BigInt representing cents/minimum currency unit to a number.
- * For values exceeding Number.MAX_SAFE_INTEGER, truncates to 2 decimal places.
- * @param amountMinor - BigInt amount in minimum currency units (e.g., paise, cents)
- * @returns Number amount in major currency units (e.g., rupees, dollars)
+ * Safely converts a BigInt minor-unit amount to major units using the
+ * currency's own divisor (Fix F12). Ordering decisions must use direct
+ * BigInt comparison at the call site (Fix F11) — this helper is for
+ * display/score magnitudes only and never floors via `amountMinor / 100n`.
  */
-function safeBigIntToNumber(amountMinor: bigint): number {
+function safeBigIntToNumber(amountMinor: bigint, currency = 'INR'): number {
   if (
     amountMinor > BigInt(Number.MAX_SAFE_INTEGER) ||
     amountMinor < -BigInt(Number.MAX_SAFE_INTEGER)
   ) {
     console.warn(
-      `BigInt value ${amountMinor.toString()} exceeds safe integer range, truncating to 2 decimal places`
+      `BigInt value ${amountMinor.toString()} exceeds safe integer range, converting with ${currency} divisor`
     );
-    // Divide by 100 first to reduce magnitude, then convert
-    return Number(amountMinor / 100n);
   }
-  return Number(amountMinor) / 100;
+  return minorToMajor(amountMinor, currency as 'INR' | 'USD' | 'EUR' | 'GBP' | 'JPY' | 'SGD' | 'AED');
 }
 
 export interface OpportunityScoreInput {
@@ -48,8 +46,14 @@ export class OpportunityScorer {
   ): OpportunityScoreResult {
     const now = input.now ?? Date.now();
 
-    const immediateSavingsVal = safeBigIntToNumber(input.immediateSavings.amountMinor);
-    const rewardValueVal = safeBigIntToNumber(input.rewardValue.amountMinor);
+    const immediateSavingsVal = safeBigIntToNumber(
+      input.immediateSavings.amountMinor,
+      (input.immediateSavings as { currency?: string }).currency ?? 'INR'
+    );
+    const rewardValueVal = safeBigIntToNumber(
+      input.rewardValue.amountMinor,
+      (input.rewardValue as { currency?: string }).currency ?? 'INR'
+    );
 
     // 1. Urgency Premium for expiring vouchers
     let urgencyPremiumVal = 0;
@@ -71,7 +75,10 @@ export class OpportunityScorer {
     // 3. Opportunity Cost (Penalty for burning long-expiry voucher if alternative promo is available)
     let opportunityCostVal = 0;
     if (input.appliedVouchers.length > 0 && input.alternativeCardPromoSavings) {
-      const altSavingsVal = safeBigIntToNumber(input.alternativeCardPromoSavings.amountMinor);
+      const altSavingsVal = safeBigIntToNumber(
+        input.alternativeCardPromoSavings.amountMinor,
+        (input.alternativeCardPromoSavings as { currency?: string }).currency ?? 'INR'
+      );
       // If vouchers have > 14 days and alternative promo captures >= 80% savings
       const hasLongExpiry = input.appliedVouchers.every((v) => {
         const daysLeft = (new Date(v.expiryDate).getTime() - now) / (24 * 60 * 60 * 1000);

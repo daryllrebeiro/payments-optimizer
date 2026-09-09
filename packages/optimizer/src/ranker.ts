@@ -4,6 +4,7 @@ import {
   CalculationTrace,
   CalculationStep,
   Cart,
+  minorToMajor,
 } from '@payments-optimizer/domain';
 
 // Strategy ranking constraints
@@ -11,10 +12,16 @@ const MIN_CONFIDENCE = 0.5;
 const MAX_COMPLEXITY = 8;
 
 export function scoreStrategy(strategy: PaymentStrategy, prefs: OptimizationPreferences): number {
-  // Convert minor currency units to major double units for scoring
-  const savingsVal = Number(strategy.immediateDiscount.amountMinor) / 100;
-  const rewardVal = Number(strategy.rewardValue.amountMinor) / 100;
-  const milestoneVal = Number(strategy.futureBenefit.amountMinor) / 100;
+  // Fix F12: route through per-currency divisor (JPY is zero-decimal).
+  const savingsVal = minorToMajor(
+    strategy.immediateDiscount.amountMinor,
+    strategy.immediateDiscount.currency
+  );
+  const rewardVal = minorToMajor(strategy.rewardValue.amountMinor, strategy.rewardValue.currency);
+  const milestoneVal = minorToMajor(
+    strategy.futureBenefit.amountMinor,
+    strategy.futureBenefit.currency
+  );
 
   const complexityVal = strategy.complexityScore;
   const riskVal = (1.0 - strategy.confidence) * 10;
@@ -41,9 +48,16 @@ export function rankStrategies(
   );
 
   return filtered.sort((a, b) => {
+    // Fix F11/F19: primary order by exact BigInt totalBenefit so a
+    // 1-minor-unit difference never ties; then float score; then id for a
+    // deterministic total order regardless of input order.
+    if (a.totalBenefit.amountMinor !== b.totalBenefit.amountMinor) {
+      return a.totalBenefit.amountMinor > b.totalBenefit.amountMinor ? -1 : 1;
+    }
     const scoreA = scoreStrategy(a, prefs);
     const scoreB = scoreStrategy(b, prefs);
-    return scoreB - scoreA; // descending order
+    if (scoreA !== scoreB) return scoreB - scoreA; // descending order
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
   });
 }
 

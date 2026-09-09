@@ -39,6 +39,29 @@ export type RewardType = 'CASHBACK' | 'POINTS' | 'MILES' | 'HOTEL_POINTS' | 'VOU
 export type Decimal = number;
 
 /**
+ * Fix F12: per-currency minor-unit exponents. JPY (and only JPY in our set)
+ * is zero-decimal — every hardcoded `/100` call site must route through
+ * minorDivisor()/minorToMajor() or ¥15 displays and scores as ¥0.15.
+ */
+export const CURRENCY_MINOR_EXPONENT: Record<Currency, number> = {
+  INR: 2,
+  USD: 2,
+  EUR: 2,
+  GBP: 2,
+  JPY: 0,
+  SGD: 2,
+  AED: 2,
+};
+
+export function minorDivisor(currency: Currency): bigint {
+  return 10n ** BigInt(CURRENCY_MINOR_EXPONENT[currency] ?? 2);
+}
+
+export function minorToMajor(amountMinor: bigint, currency: Currency): number {
+  return Number(amountMinor) / Number(minorDivisor(currency));
+}
+
+/**
  * Parses an ISO 8601 date string and validates it.
  * @param dateStr - Date string in ISO 8601 format
  * @returns Date object if valid, null if parsing fails
@@ -477,6 +500,7 @@ export * from './profile-schema.js';
 
 // Circuit Breaker for API resilience
 export * from './circuit-breaker.js';
+export * from './rate-limiter.js';
 
 // Result type and error handling
 export * from './result.js';
