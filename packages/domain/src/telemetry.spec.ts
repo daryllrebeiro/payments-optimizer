@@ -175,4 +175,26 @@ describe('Telemetry', () => {
       expect(getTelemetry()).not.toBeUndefined();
     });
   });
+
+  describe('Fix F5 — default-off and record-time redaction', () => {
+    it('is disabled with no config passed', () => {
+      const telemetry = Telemetry.create();
+      telemetry.record({ type: 'test', properties: { merchantId: 'amazon' } });
+      expect(telemetry.getQueuedEvents().length).toBe(0);
+    });
+
+    it('redacts raw merchant ID and exact amount already in the queue (pre-flush)', () => {
+      const telemetry = Telemetry.create({ enabled: true, sampleRate: 1 });
+      telemetry.record({
+        type: 'test',
+        properties: { merchantId: 'amazon', totalSavings: 12345 },
+      });
+      const queued = telemetry.getQueuedEvents();
+      expect(queued.length).toBe(1);
+      const props = queued[0]?.properties as Record<string, unknown>;
+      expect(props['merchantId']).not.toBe('amazon');
+      expect(String(props['merchantId'])).toMatch(/^h[0-9a-f]+$/);
+      expect(props['totalSavings']).not.toBe(12345);
+    });
+  });
 });

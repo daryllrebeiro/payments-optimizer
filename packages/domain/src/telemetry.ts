@@ -102,9 +102,11 @@ export class Telemetry {
   private clock: Clock;
   private queue: TelemetryEvent[] = [];
   private enabled: boolean;
+  private installSalt: string;
 
   constructor(config: TelemetryConfig = {}) {
-    const enabled = config.enabled ?? true;
+    // Fix F5: telemetry is OFF unless explicitly opted in.
+    const enabled = config.enabled ?? false;
     const sampleRate = config.sampleRate ?? 1.0;
     this.config = {
       enabled,
@@ -117,10 +119,95 @@ export class Telemetry {
     this.logger = getLogger();
     this.clock = getClock();
     this.enabled = enabled && Math.random() < sampleRate;
+    this.installSalt = Math.random().toString(36).slice(2) + Date.now().toString(36);
 
     if (this.enabled) {
       this.startFlushTimer();
     }
+  }
+
+  /**
+   * Fix F5: record-time redaction — applied BEFORE the event enters the
+   * queue, never at flush time. Known identifier keys are hashed with the
+   * per-install salt; known amount keys are bucketed. Custom redactPaths
+   * (dot-paths) are blanked. What sits in the queue is already safe.
+   */
+  private hashId(value: string): string {
+    let h = 5381;
+    const s = `${this.installSalt}:${value}`;
+    for (let i = 0; i < s.length; i++) {
+      h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+    }
+    return `h${h.toString(16)}`;
+  }
+
+  private bucketAmount(value: number): string {
+    if (!Number.isFinite(value)) return 'unknown';
+    const abs = Math.abs(value);
+    if (abs < 1000) return '<1k';
+    if (abs < 10000) return '1k-10k';
+    if (abs < 100000) return '10k-100k';
+    if (abs < 1000000) return '100k-1M';
+    return '>1M';
+  }
+
+  private redactValue(key: string, value: unknown): unknown {
+    const idKeys = new Set([
+      'merchantId',
+      'merchant',
+      'userId',
+      'cardId',
+      'voucherId',
+      'benefitId',
+      'user_id',
+      'merchant_id',
+    ]);
+    const amountKeys = new Set([
+      'amount',
+      'savings',
+      'totalSavings',
+      'totalBenefit',
+      'rewardValue',
+      'durationMs',
+    ]);
+    if (idKeys.has(key) && typeof value === 'string') return this.hashId(value);
+    if (amountKeys.has(key) && typeof value === 'number') return this.bucketAmount(value);
+    return value;
+  }
+
+  private getByPath(obj: Record<string, unknown>, path: string): unknown {
+    return path.split('.').reduce<unknown>((acc, part) => {
+      if (typeof acc === 'object' && acc !== null && part in (acc as Record<string, unknown>)) {
+        return (acc as Record<string, unknown>)[part];
+      }
+      return undefined;
+    }, obj);
+  }
+
+  private redactProperties(properties: Record<string, unknown>): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(properties)) {
+      out[key] = this.redactValue(key, value);
+    }
+    for (const path of this.config.redactPaths ?? []) {
+      const parts = path.split('.');
+      let node: unknown = out;
+      for (let i = 0; i < parts.length - 1; i++) {
+        const part = parts[i] as string;
+        if (typeof node === 'object' && node !== null && part in (node as Record<string, unknown>)) {
+          node = (node as Record<string, unknown>)[part];
+        } else {
+          node = undefined;
+          break;
+        }
+      }
+      const last = parts[parts.length - 1] as string;
+      if (typeof node === 'object' && node !== null && last in (node as Record<string, unknown>)) {
+        (node as Record<string, unknown>)[last] = '[redacted]';
+      }
+      void this.getByPath;
+    }
+    return out;
   }
 
   /**
@@ -135,9 +222,15 @@ export class Telemetry {
       id: this.generateId(),
       timestamp: this.clock.toISO(),
       ...event,
+      properties: this.redactProperties(event.properties ?? {}),
     };
 
     this.queueEvent(telemetryEvent);
+  }
+
+  /** Test hook (Fix F5): inspect the already-redacted queued events. */
+  getQueuedEvents(): TelemetryEvent[] {
+    return [...this.queue];
   }
 
   /**
