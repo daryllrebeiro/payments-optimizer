@@ -43,3 +43,20 @@ Thumbs.db
 .env.test.local
 .env.production.local
 *.env.local
+
+# Emitted TS build artifacts accidentally placed next to sources
+# (tsc without outDir). Keep these local-only; never commit.
+packages/*/src/**/*.js
+packages/*/src/**/*.d.ts
+packages/*/src/**/*.js.map
+packages/*/src/**/*.d.ts.map
+apps/*/src/**/*.js
+apps/*/src/**/*.d.ts
+apps/*/src/**/*.js.map
+apps/*/src/**/*.d.ts.map
+
+# Local agent/tooling state
+.kilo/
+.kilocode/
+.opencode/
+agents/
