@@ -47,6 +47,11 @@ export const SerializedRecipeStepSchema = z.object({
   stepNumber: z.number().int().positive(),
   phase: z.enum(['BEFORE_PAYMENT', 'AT_PAYMENT', 'POST_PAYMENT']),
   actionType: z.string(),
+  // Fix F9: stable joinable ledger key — domain StrategyRecipeStep requires
+  // benefitSourceId; the wire schema must carry it or validation strips it
+  // and every persisted benefits[].benefitId becomes undefined.
+  benefitId: z.string().min(1).optional(),
+  benefitSourceId: z.string().min(1),
   benefitSourceName: z.string(),
   description: z.string(),
   amountApplied: SerializedMoneySchema,

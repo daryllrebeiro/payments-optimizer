@@ -5,6 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   CartSchema,
+  SerializedRecipeStepSchema,
   SerializedStrategySchema,
   OptimizePaymentMessageSchema,
   OptimizePaymentResponseSchema,
@@ -223,6 +224,7 @@ describe('Message Schemas', () => {
             stepNumber: 1,
             phase: 'BEFORE_PAYMENT',
             actionType: 'VOUCHER_REDEMPTION',
+            benefitSourceId: 'voucher-gift-100',
             benefitSourceName: 'Gift Card',
             description: 'Apply ₹100 voucher',
             amountApplied: { amountMinor: '10000', currency: 'INR' },
@@ -377,6 +379,40 @@ describe('Message Schemas', () => {
       // Zod allows empty strings by default, so this should pass
       // If you want to enforce non-empty, update the schema
       expect(() => OptimizePaymentErrorResponseSchema.parse(response)).not.toThrow();
+    });
+  });
+
+  describe('Fix F9 — recipe steps carry stable ledger join keys', () => {
+    const baseStep = {
+      stepNumber: 1,
+      phase: 'BEFORE_PAYMENT',
+      actionType: 'VOUCHER_REDEMPTION',
+      benefitSourceName: 'Gift Card',
+      description: 'Apply voucher',
+      amountApplied: { amountMinor: '10000', currency: 'INR' },
+      savingsGenerated: { amountMinor: '10000', currency: 'INR' },
+    };
+
+    it('rejects a recipe step missing benefitSourceId (audit exploit: undefined ledger key)', () => {
+      expect(() => SerializedRecipeStepSchema.parse({ ...baseStep })).toThrow();
+    });
+
+    it('preserves benefitSourceId through strategy validation (no silent strip)', () => {
+      const strategy = {
+        id: 's1',
+        immediateDiscount: { amountMinor: '10000', currency: 'INR' },
+        rewardValue: { amountMinor: '0', currency: 'INR' },
+        futureBenefit: { amountMinor: '0', currency: 'INR' },
+        fees: { amountMinor: '0', currency: 'INR' },
+        effectiveCost: { amountMinor: '90000', currency: 'INR' },
+        totalBenefit: { amountMinor: '10000', currency: 'INR' },
+        confidence: 1,
+        complexityScore: 1,
+        stepDescriptions: ['x'],
+        recipeSteps: [{ ...baseStep, benefitSourceId: 'voucher-1' }],
+      };
+      const parsed = validateStrategy(strategy);
+      expect(parsed.recipeSteps?.[0]?.benefitSourceId).toBe('voucher-1');
     });
   });
 });

@@ -20,7 +20,7 @@ export interface OptimizePaymentMessageLegacy {
   type: 'OPTIMIZE_PAYMENT';
   payload: {
     cart: Cart;
-    /** Serialised Cart — bigints encoded as {"__bigint__": "123"} (F16) */
+    /** Serialised Cart — bigints encoded as {"__type":"bigint","value":"123"} (F16) */
     cartJson: string;
   };
 }

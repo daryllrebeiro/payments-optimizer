@@ -19,7 +19,7 @@ import {
   validateProfileIntegrity,
   serializeProfileForStorage,
 } from '@payments-optimizer/domain';
-import { validateMessage } from '@payments-optimizer/domain';
+import { validateMessage, RateLimiter } from '@payments-optimizer/domain';
 import { PublicDataManager, CartSchema } from '@payments-optimizer/offer-engine';
 import { SavingsRepository, DurableTaskQueue } from '@payments-optimizer/storage';
 import type {
@@ -101,9 +101,19 @@ async function loadUserProfile(): Promise<
 
 /**
  * Rate limiting constants for optimization requests
+ * Fix F14: canonical limiter is RateLimiter (domain); storage is an
+ * advisory cross-instance backstop. Fail CLOSED when chrome.storage is
+ * unavailable for this gate — unavailable storage must not silently allow
+ * unlimited requests. Documented approximation: in-memory bucket is exact
+ * per worker instance; cross-instance races are bounded advisory (at most
+ * 2N-1 under race), not silent unlimited.
  */
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 10;
+const memoryLimiter = new RateLimiter({
+  maxRequests: RATE_LIMIT_MAX_REQUESTS,
+  windowMs: RATE_LIMIT_WINDOW_MS,
+});
 
 /**
  * F1: enqueue the confirmed savings entry durably BEFORE attempting the
@@ -267,8 +277,10 @@ async function saveConfirmedOptimization(
  * @returns true if under the limit, false if rate limited
  */
 async function isOptimizationRateLimited(): Promise<boolean> {
+  // Canonical in-memory gate first (exact per instance).
+  if (memoryLimiter.isLimited()) return true;
   if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
-    return false;
+    return true; // Fix F14: fail closed when storage unavailable.
   }
 
   const now = Date.now();
@@ -499,7 +511,29 @@ chrome.runtime.onMessage.addListener(
             currency: confirmation.cartTotal.currency,
           };
 
-          await saveConfirmedOptimization(cart, confirmation.strategy, originalTotal, []);
+          // Fix F9: derive the benefit ledger from the strategy's own
+          // recipeSteps (stable benefitSourceId join keys) instead of
+          // persisting an empty benefits array. benefitId falls back to
+          // benefitSourceId — a name string is never a safe join key.
+          const strategyWithSteps = confirmation.strategy as unknown as {
+            recipeSteps?: Array<{
+              actionType: string;
+              benefitSourceId: string;
+              benefitSourceName: string;
+              amountApplied: { amountMinor: string; currency: string };
+            }>;
+          };
+          const benefitsFromSteps = (strategyWithSteps.recipeSteps ?? []).map((s) => ({
+            benefitId: s.benefitSourceId,
+            benefitType: s.actionType,
+            benefitSourceId: s.benefitSourceId,
+            benefitSourceName: s.benefitSourceName,
+            amountApplied: {
+              amountMinor: BigInt(s.amountApplied.amountMinor),
+              currency: s.amountApplied.currency as import('@payments-optimizer/domain').Currency,
+            },
+          }));
+          await saveConfirmedOptimization(cart, confirmation.strategy, originalTotal, benefitsFromSteps);
           sendResponse({ type: 'SAVINGS_CONFIRMED', confirmed: true } as unknown as OptimizePaymentResponse);
         } catch (err) {
           sendResponse({
