@@ -62,6 +62,64 @@ function getManager(): PublicDataManager {
   return dataManager;
 }
 
+/**
+ * Fix S-12: append-only security-event log (capped 200, preserved across
+ * the Diagnostics purge flow — purge clears ledger/session, never this).
+ * Fix S-05: full diagnostics stay local; the page channel gets codes only.
+ */
+async function logSecurityEvent(type: string, detail: Record<string, unknown>): Promise<void> {
+  try {
+    if (typeof chrome === 'undefined' || !chrome.storage?.local) return;
+    const raw = await chrome.storage.local.get(['security-events']);
+    const existing = (raw as Record<string, unknown>)['security-events'];
+    const events = Array.isArray(existing) ? existing : [];
+    events.push({ type, at: Date.now(), ...detail });
+    await chrome.storage.local.set({
+      'security-events': events.slice(-200),
+    });
+  } catch {
+    // logging must never break the request path
+  }
+}
+
+/** Fix S-05: hostile callers get a code; full detail stays in local logs. */
+function pageError(code: string, localDetail: unknown): OptimizePaymentErrorResponse {
+  console.warn(`[PaymentsOptimizer] ${code}:`, localDetail);
+  void logSecurityEvent(code, {});
+  return { type: 'OPTIMIZE_PAYMENT_ERROR', error: code };
+}
+
+// Fix S-03/S-04: confirm idempotency + burn leases + per-day cap.
+const processedConfirms = new Set<string>();
+const voucherLeases = new Map<string, { owner: string; expiresAt: number }>();
+const CONFIRM_PER_MERCHANT_PER_DAY = 20;
+const BURN_LEASE_MS = 5 * 60 * 1000;
+
+/** Test-only reset for module-level gates (limiter, idempotency, leases). */
+export function __resetServiceWorkerStateForTests(): void {
+  memoryLimiter.reset();
+  processedConfirms.clear();
+  voucherLeases.clear();
+}
+
+function acquireBurnLeases(
+  ids: string[],
+  owner: string,
+  now = Date.now()
+): { ok: true } | { ok: false; locked: string } {
+  for (const [id, lease] of voucherLeases) {
+    if (lease.expiresAt <= now) voucherLeases.delete(id);
+  }
+  for (const id of ids) {
+    const lease = voucherLeases.get(id);
+    if (lease && lease.owner !== owner) return { ok: false, locked: id };
+  }
+  for (const id of ids) {
+    voucherLeases.set(id, { owner, expiresAt: now + BURN_LEASE_MS });
+  }
+  return { ok: true };
+}
+
 // ── F8: no default seed profile ─────────────────────────────────────────────
 // The service worker must never optimize against a fabricated profile of
 // fixture cards. When no valid user profile exists, the structured
@@ -363,10 +421,8 @@ chrome.runtime.onMessage.addListener(
     try {
       msg = validateMessage(message);
     } catch (err) {
-      sendResponse({
-        type: 'OPTIMIZE_PAYMENT_ERROR',
-        error: `MESSAGE_REJECTED: ${(err as Error).message}`,
-      });
+      // Fix S-05: code to the page, diagnostics to local logs only.
+      sendResponse(pageError('INVALID_REQUEST', err));
       return false;
     }
 
@@ -376,11 +432,7 @@ chrome.runtime.onMessage.addListener(
       (async () => {
         // Check rate limit before processing
         if (await isOptimizationRateLimited()) {
-          const errorResponse: OptimizePaymentErrorResponse = {
-            type: 'OPTIMIZE_PAYMENT_ERROR',
-            error: `Rate limit exceeded. Maximum ${RATE_LIMIT_MAX_REQUESTS} optimization requests per minute.`,
-          };
-          sendResponse(errorResponse);
+          sendResponse(pageError('RATE_LIMITED', 'optimization gate'));
           return;
         }
 
@@ -389,11 +441,7 @@ chrome.runtime.onMessage.addListener(
           const cartJson = msg.payload?.cartJson;
           const preCheck = preValidateCartJson(cartJson);
           if (!preCheck.ok) {
-            const errorResponse: OptimizePaymentErrorResponse = {
-              type: 'OPTIMIZE_PAYMENT_ERROR',
-              error: `PAYLOAD_REJECTED: ${preCheck.error}`,
-            };
-            sendResponse(errorResponse);
+            sendResponse(pageError('PAYLOAD_REJECTED', preCheck.error));
             return;
           }
 
@@ -407,11 +455,11 @@ chrome.runtime.onMessage.addListener(
           // data, never fall back to fixture cards
           const profileResult = await loadUserProfile();
           if (profileResult.kind === 'error') {
-            const errorResponse: OptimizePaymentErrorResponse = {
-              type: 'OPTIMIZE_PAYMENT_ERROR',
-              error: profileResult.error,
-            };
-            sendResponse(errorResponse);
+            // Fix S-05: structured code to the page (no field-level detail).
+            const code = profileResult.error.startsWith('PROFILE_NOT_CONFIGURED')
+              ? 'PROFILE_NOT_CONFIGURED'
+              : 'PROFILE_CORRUPT';
+            sendResponse(pageError(code, profileResult.error));
             return;
           }
           const profile = profileResult.profile;
@@ -479,11 +527,7 @@ chrome.runtime.onMessage.addListener(
 
           sendResponse(response);
         } catch (err) {
-          const errorResponse: OptimizePaymentErrorResponse = {
-            type: 'OPTIMIZE_PAYMENT_ERROR',
-            error: err instanceof Error ? err.message : String(err),
-          };
-          sendResponse(errorResponse);
+          sendResponse(pageError('INVALID_REQUEST', err));
         }
       })();
 
@@ -494,9 +538,47 @@ chrome.runtime.onMessage.addListener(
       // F13: explicit user confirmation that a strategy was applied — this,
       // and only this, persists a savings entry. The message shape was
       // already validated by validateMessage (F3) — no re-casting here.
+      // Fix S-03/S-04: idempotent (duplicate key replays the prior success
+      // without a second write), per-merchant/per-day capped, burn-leased.
       (async () => {
         try {
           const confirmation = msg.payload;
+
+          if (processedConfirms.has(confirmation.idempotencyKey)) {
+            sendResponse({
+              type: 'SAVINGS_CONFIRMED',
+              confirmed: true,
+            } as unknown as OptimizePaymentResponse);
+            return;
+          }
+
+          // Fix S-03 ordering: currency guard BEFORE any store touch, so a
+          // cross-currency confirm never opens the savings DB at all.
+          if (confirmation.cartTotal.currency !== confirmation.strategy.totalBenefit.currency) {
+            await logSecurityEvent('CURRENCY_MISMATCH', {
+              merchantId: confirmation.merchantId,
+            });
+            sendResponse({
+              type: 'SAVINGS_CONFIRMED',
+              confirmed: true,
+            } as unknown as OptimizePaymentResponse);
+            return;
+          }
+
+          const dayStart = new Date();
+          dayStart.setHours(0, 0, 0, 0);
+          const todayCount = (
+            await savingsRepository.queryByMerchantAndDateRange(
+              confirmation.merchantId,
+              dayStart.getTime(),
+              Date.now()
+            )
+          ).length;
+          if (todayCount >= CONFIRM_PER_MERCHANT_PER_DAY) {
+            await logSecurityEvent('CONFIRM_CAP_HIT', { merchantId: confirmation.merchantId });
+            sendResponse(pageError('RATE_LIMITED', 'confirm per-day cap'));
+            return;
+          }
 
           const cart = {
             merchantId: confirmation.merchantId,
@@ -533,13 +615,20 @@ chrome.runtime.onMessage.addListener(
               currency: s.amountApplied.currency as import('@payments-optimizer/domain').Currency,
             },
           }));
+          // Fix S-04: burn lease — a second tab confirming the same voucher
+          // IDs while this lease is live aborts instead of double-spending.
+          const voucherIds = benefitsFromSteps.map((b) => b.benefitSourceId);
+          const lease = acquireBurnLeases(voucherIds, confirmation.idempotencyKey);
+          if (!lease.ok) {
+            await logSecurityEvent('VOUCHER_LOCKED', { voucherId: lease.locked });
+            sendResponse(pageError('VOUCHER_LOCKED', lease.locked));
+            return;
+          }
           await saveConfirmedOptimization(cart, confirmation.strategy, originalTotal, benefitsFromSteps);
+          processedConfirms.add(confirmation.idempotencyKey);
           sendResponse({ type: 'SAVINGS_CONFIRMED', confirmed: true } as unknown as OptimizePaymentResponse);
         } catch (err) {
-          sendResponse({
-            type: 'OPTIMIZE_PAYMENT_ERROR',
-            error: err instanceof Error ? err.message : String(err),
-          } as OptimizePaymentErrorResponse);
+          sendResponse(pageError('INVALID_REQUEST', err));
         }
       })();
       return true;

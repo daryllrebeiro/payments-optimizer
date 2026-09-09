@@ -59,6 +59,9 @@ import {
 } from '../data/card-catalog.js';
 import { serializeProfileForStorage } from '@payments-optimizer/domain';
 
+// Imported AFTER the chrome mock is installed (module top-level touches chrome).
+const { __resetServiceWorkerStateForTests } = await import('./service-worker.js');
+
 const validProfile = {
   version: 1,
   currency: 'INR',
@@ -211,8 +214,8 @@ describe('F6 — oversized / hostile payloads rejected before parsing', () => {
     });
     const response = await sendOptimize(hostile);
     expect(response.type).toBe('OPTIMIZE_PAYMENT_ERROR');
-    expect(response.error).toContain('PAYLOAD_REJECTED');
-    expect(response.error).toContain('65536');
+    expect(response.error).toBe('PAYLOAD_REJECTED');
+    expect(response.error).not.toContain('65536');
   });
 
   it('service worker stays responsive after rejecting a hostile payload', async () => {
@@ -276,8 +279,7 @@ describe('F2 — currency mismatch guard (unit level)', () => {
     vi.clearAllMocks();
   });
 
-  it('CONFIRM_SAVINGS with a cross-currency strategy writes nothing', async () => {
-    const originalOpen = indexedDB.open;
+  it('CONFIRM_SAVINGS with a cross-currency strategy writes nothing', async () => {    const originalOpen = indexedDB.open;
     let savingsDbOpened = false;
     (globalThis.indexedDB as any).open = (...args: any[]) => {
       if (String(args[0]).includes('savings')) savingsDbOpened = true;
@@ -289,6 +291,7 @@ describe('F2 — currency mismatch guard (unit level)', () => {
         type: 'CONFIRM_SAVINGS',
         payload: {
           merchantId: 'amazon',
+          idempotencyKey: 'test-key-f2-001',
           cartTotal: { amountMinor: '10000', currency: 'INR' },
           strategy: {
             id: 's1',
@@ -315,5 +318,67 @@ describe('F2 — currency mismatch guard (unit level)', () => {
     } finally {
       (globalThis.indexedDB as any).open = originalOpen;
     }
+  });
+});
+
+describe('S-03 — confirm replay with same idempotency key writes once', () => {
+  beforeEach(() => {
+    storageData = { 'user-profile': storageShapedProfile(validProfile) };
+    vi.clearAllMocks();
+  });
+
+  it('duplicate CONFIRM_SAVINGS delivery returns success without a second write', async () => {
+    const payload = {
+      merchantId: 'amazon',
+      idempotencyKey: 'replay-key-001',
+      cartTotal: { amountMinor: '10000', currency: 'INR' },
+      strategy: {
+        id: 's1',
+        immediateDiscount: { amountMinor: '500', currency: 'INR' },
+        rewardValue: { amountMinor: '0', currency: 'INR' },
+        futureBenefit: { amountMinor: '0', currency: 'INR' },
+        fees: { amountMinor: '0', currency: 'INR' },
+        effectiveCost: { amountMinor: '9500', currency: 'INR' },
+        totalBenefit: { amountMinor: '500', currency: 'INR' },
+        confidence: 0.9,
+        complexityScore: 1,
+        stepDescriptions: [],
+      },
+      benefitsApplied: [],
+    };
+    const send = (): Promise<any> =>
+      new Promise((resolve) => {
+        registeredListener({ type: 'CONFIRM_SAVINGS', payload }, { tab: { id: 1 } }, resolve);
+      });
+    const first = await send();
+    expect(first.type).toBe('SAVINGS_CONFIRMED');
+    const second = await send();
+    expect(second.type).toBe('SAVINGS_CONFIRMED');
+  });
+});
+
+describe('S-05 — hostile callers get codes, never field diagnostics', () => {
+  beforeEach(() => {
+    storageData = {};
+    vi.clearAllMocks();
+    __resetServiceWorkerStateForTests();
+  });
+
+  it('malformed messages return INVALID_REQUEST with no schema detail', async () => {
+    const response: any = await new Promise((resolve) => {
+      registeredListener({ type: 'NOPE', payload: {} }, { tab: { id: 1 } }, resolve);
+    });
+    expect(response.type).toBe('OPTIMIZE_PAYMENT_ERROR');
+    expect(response.error).toBe('INVALID_REQUEST');
+  });
+
+  it('corrupt profile returns PROFILE_CORRUPT code without field dump', async () => {
+    storageData['user-profile'] = storageShapedProfile({
+      ...validProfile,
+      paymentMethods: [{ type: 'CREDIT_CARD' }],
+    });
+    const response = await sendOptimize(validCartJson());
+    expect(response.type).toBe('OPTIMIZE_PAYMENT_ERROR');
+    expect(response.error).toBe('PROFILE_CORRUPT');
   });
 });

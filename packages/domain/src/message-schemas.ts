@@ -108,6 +108,9 @@ export const ConfirmSavingsMessageSchema = z.object({
   type: z.literal('CONFIRM_SAVINGS'),
   payload: z.object({
     merchantId: z.string().min(1).max(200),
+    // Fix S-03: idempotency key (uuid per user click) — duplicate delivery
+    // returns the prior entry instead of writing a second row.
+    idempotencyKey: z.string().min(8).max(100),
     cartTotal: z.object({
       amountMinor: z.string().regex(/^\d{1,17}$/, 'amountMinor must be an integer string'),
       currency: z.enum(['INR', 'USD', 'EUR', 'GBP', 'JPY', 'SGD', 'AED']),

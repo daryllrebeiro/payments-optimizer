@@ -43,18 +43,26 @@ export default function Diagnostics({ profile, activeTabId, onUpdateProfile }: D
   };
 
   const handleReset = async () => {
-    if (
-      window.confirm(
-        'Are you sure you want to reset your local database? All cards will be deleted.'
-      )
-    ) {
-      try {
-        await chrome.storage.local.clear();
-        await chrome.storage.session.clear();
-        window.location.reload();
-      } catch (err) {
-        setStatusMessage(`Reset failed: ${err instanceof Error ? err.message : String(err)}`);
+    // Fix S-12: export-before-purge + preserve the append-only
+    // security-event trail across the purge (ledger/session are wiped,
+    // security-events never are — they are the dispute evidence).
+    const confirmed = window.confirm(
+      'Export your profile first (Export Profile above), then confirm reset. ' +
+        'All cards and history will be deleted. Security audit events are preserved.'
+    );
+    if (!confirmed) return;
+    try {
+      const keep = await chrome.storage.local.get(['security-events']);
+      await chrome.storage.local.clear();
+      await chrome.storage.session.clear();
+      if ((keep as Record<string, unknown>)?.['security-events'] !== undefined) {
+        await chrome.storage.local.set({
+          'security-events': (keep as Record<string, unknown>)['security-events'],
+        });
       }
+      window.location.reload();
+    } catch (err) {
+      setStatusMessage(`Reset failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
