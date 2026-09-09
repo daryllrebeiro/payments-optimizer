@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateKey, deriveKey, encrypt, decrypt } from './index.js';
+import { generateKey, deriveKey, encrypt, decrypt, fromHex } from './index.js';
 
 describe('Web Crypto Security Helpers', () => {
   it('should generate an AES key and encrypt/decrypt successfully', async () => {
@@ -17,7 +17,7 @@ describe('Web Crypto Security Helpers', () => {
 
   it('should derive key from passphrase and salt consistently', async () => {
     const passphrase = 'my-safe-passphrase';
-    const salt = 'unique-salt-string';
+    const salt = 'unique-salt-string-16+';
     const plaintext = 'Sensitive profile contents';
 
     const key1 = await deriveKey(passphrase, salt);
@@ -27,5 +27,14 @@ describe('Web Crypto Security Helpers', () => {
 
     const decrypted = await decrypt(encrypted.ciphertext, encrypted.iv, key2);
     expect(decrypted).toBe(plaintext);
+  });
+
+  it('Fix S-08 — short salts rejected, malformed hex is structured', async () => {
+    await expect(deriveKey('pass', 'short')).rejects.toThrow('salt must be at least 16 bytes');
+    expect(fromHex('zz').ok).toBe(false);
+    expect(fromHex('abc').ok).toBe(false);
+    await expect(
+      decrypt('zz', '00'.repeat(12), await generateKey())
+    ).rejects.toThrow('invalid ciphertext');
   });
 });
