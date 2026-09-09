@@ -1,4 +1,12 @@
-import { Cart, CreditCard, Offer, Coupon, RewardRule, Money, Currency } from '@payments-optimizer/domain';
+import {
+  Cart,
+  CreditCard,
+  Offer,
+  Coupon,
+  RewardRule,
+  Money,
+  Currency,
+} from '@payments-optimizer/domain';
 
 // Helper functions for multi-currency fixtures
 function createMoney(amount: number, currency: Currency): Money {
@@ -46,7 +54,7 @@ export const amazonCartUSD: Cart = {
   subtotal: createMoney(999.99, 'USD'),
   discounts: [],
   shipping: createMoney(0, 'USD'),
-  taxes: createMoney(80.00, 'USD'), // $80 tax
+  taxes: createMoney(80.0, 'USD'), // $80 tax
   total: createMoney(1079.99, 'USD'),
   currency: 'USD',
 };
@@ -64,8 +72,8 @@ export const ebayCartUSD: Cart = {
   ],
   subtotal: createMoney(299.99, 'USD'),
   discounts: [],
-  shipping: createMoney(10.00, 'USD'),
-  taxes: createMoney(24.00, 'USD'),
+  shipping: createMoney(10.0, 'USD'),
+  taxes: createMoney(24.0, 'USD'),
   total: createMoney(333.99, 'USD'),
   currency: 'USD',
 };
@@ -77,7 +85,7 @@ export const chaseSapphireCard: CreditCard = {
   productName: 'Sapphire Preferred',
   network: 'VISA',
   rewardProgram: 'Chase Ultimate Rewards',
-  annualFee: createMoney(95.00, 'USD'), // $95 annual fee
+  annualFee: createMoney(95.0, 'USD'), // $95 annual fee
   rewardRules: [
     {
       id: 'chase-sapphire-travel',
@@ -127,12 +135,12 @@ export const amazonUSD5OffCoupon: Coupon = {
   code: 'US5OFF',
   benefit: {
     type: 'FIXED_DISCOUNT',
-    value: createMoney(5.00, 'USD'),
+    value: createMoney(5.0, 'USD'),
   },
   conditions: [
     {
       type: 'MINIMUM_SPEND',
-      value: createMoney(35.00, 'USD'), // Min $35
+      value: createMoney(35.0, 'USD'), // Min $35
     },
   ],
   stackability: 'STACKABLE',
@@ -148,7 +156,7 @@ export const chaseOffers: Offer = {
   conditions: [],
   benefit: {
     type: 'CASHBACK',
-    value: 0.10, // 10%
+    value: 0.1, // 10%
   },
   paymentRequirements: [
     {
@@ -183,7 +191,7 @@ export const amazonEURCart: Cart = {
   subtotal: createMoney(29.99, 'EUR'),
   discounts: [],
   shipping: createMoney(3.99, 'EUR'),
-  taxes: createMoney(3.60, 'EUR'),
+  taxes: createMoney(3.6, 'EUR'),
   total: createMoney(37.58, 'EUR'),
   currency: 'EUR',
 };
@@ -203,8 +211,7 @@ export const amazonUKCart: Cart = {
   subtotal: createMoney(79.99, 'GBP'),
   discounts: [],
   shipping: createMoney(0, 'GBP'),
-  taxes: createMoney(16.00, 'GBP'),
+  taxes: createMoney(16.0, 'GBP'),
   total: createMoney(95.99, 'GBP'),
   currency: 'GBP',
 };
-

@@ -1,5 +1,11 @@
 import type { Plugin, AdapterConfig } from './types';
-import type { MerchantAdapter, PageContext, MerchantDetectionResult, Cart, ProductContext } from '@payments-optimizer/domain';
+import type {
+  MerchantAdapter,
+  PageContext,
+  MerchantDetectionResult,
+  Cart,
+  ProductContext,
+} from '@payments-optimizer/domain';
 
 class SimpleAdapter implements MerchantAdapter {
   constructor(

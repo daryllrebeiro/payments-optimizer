@@ -1,10 +1,18 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- legacy explicit-any usage; remove when typed */
 /**
  * Tests for structured Logger
  * Epic 1.9: Observability with structured logging and privacy-first telemetry
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi, Mock } from 'vitest';
-import { Logger, LogLevel, getLogger, setLogger, resetLogger, DEFAULT_REDACTED_PATHS } from './logger.js';
+import {
+  Logger,
+  LogLevel,
+  getLogger,
+  setLogger,
+  resetLogger,
+  DEFAULT_REDACTED_PATHS,
+} from './logger.js';
 import { TestClock, setClock, resetClock } from './clock.js';
 import { DomainError } from './errors.js';
 
@@ -262,7 +270,7 @@ describe('Logger', () => {
 
       expect(spy).toHaveBeenCalled();
       const output = spy.mock.calls[0]![0] as string;
-      
+
       // Should be valid JSON
       expect(() => JSON.parse(output)).not.toThrow();
     });
@@ -297,7 +305,7 @@ describe('Logger', () => {
 
       expect(spy).toHaveBeenCalled();
       const output = spy.mock.calls[0]![0] as string;
-      
+
       // Should contain timestamp, level, message, and context
       expect(output).toContain('2026-09-07T10:00:00.000Z');
       expect(output).toContain('[INFO]');
@@ -383,7 +391,7 @@ describe('Logger', () => {
 
       expect(result).toBe('done');
       expect(spy).toHaveBeenCalled();
-      
+
       // Should have at least two calls (start and complete)
       expect(spy.mock.calls.length).toBeGreaterThanOrEqual(2);
     });

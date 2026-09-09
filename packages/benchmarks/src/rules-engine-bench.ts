@@ -3,7 +3,12 @@
  */
 
 import { checkEligibility, calculateBenefit } from '@payments-optimizer/rules-engine';
-import { amazonCart, hdfcInstantDiscountOffer, amazonCartUSD, chaseOffers } from '@payments-optimizer/test-fixtures';
+import {
+  amazonCart,
+  hdfcInstantDiscountOffer,
+  amazonCartUSD,
+  chaseOffers,
+} from '@payments-optimizer/test-fixtures';
 
 export function createRulesEngineBenchmarks() {
   const benchmarks: Array<{ name: string; fn: () => void }> = [];

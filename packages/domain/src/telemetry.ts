@@ -1,7 +1,7 @@
 /**
  * Privacy-First Telemetry System
  * Epic 1.9: Observability with structured logging and telemetry
- * 
+ *
  * Features:
  * - Event-based telemetry with optional PII
  * - Privacy-first: PII opt-in only
@@ -19,7 +19,7 @@ import { Clock, getClock } from './clock.js';
 export interface TelemetryEvent {
   id: string;
   type: string;
-  timestamp: string;      // ISO 8601
+  timestamp: string; // ISO 8601
   properties: Record<string, unknown>;
   metadata?: {
     userId?: string;
@@ -46,10 +46,10 @@ export interface TelemetryConfig {
   enabled?: boolean;
   endpoint?: string;
   apiKey?: string;
-  sampleRate?: number;     // 0.0 - 1.0 (fraction of events to send)
+  sampleRate?: number; // 0.0 - 1.0 (fraction of events to send)
   maxQueueSize?: number;
-  flushInterval?: number;  // ms
-  includePii?: boolean;    // Explicitly include PII (opt-in)
+  flushInterval?: number; // ms
+  includePii?: boolean; // Explicitly include PII (opt-in)
   redactPaths?: string[];
   privacyPolicyUrl?: string;
 }
@@ -63,26 +63,26 @@ export const TelemetryEventType = {
   USER_LOGOUT: 'user_logout',
   USER_REGISTER: 'user_register',
   USER_PROFILE_UPDATE: 'user_profile_update',
-  
+
   // Feature usage
   FEATURE_ENABLED: 'feature_enabled',
   FEATURE_DISABLED: 'feature_disabled',
   OPTION_SELECTED: 'option_selected',
   BUTTON_CLICKED: 'button_clicked',
-  
+
   // Business events
   BENEFIT_APPLIED: 'benefit_applied',
   VOUCHER_BURNED: 'voucher_burned',
   SAVINGS_SAVED: 'savings_saved',
   STRATEGY_GENERATED: 'strategy_generated',
   STRATEGY_ACCEPTED: 'strategy_accepted',
-  
+
   // Performance
   OPTIMIZATION_COMPLETE: 'optimization_complete',
   API_REQUEST: 'api_request',
   API_RESPONSE: 'api_response',
   API_ERROR: 'api_error',
-  
+
   // Errors
   ERROR_OCCURRED: 'error_occurred',
   CRITICAL_ERROR: 'critical_error',
@@ -91,7 +91,7 @@ export const TelemetryEventType = {
 /**
  * Telemetry event types union
  */
-export type TelemetryEventName = typeof TelemetryEventType[keyof typeof TelemetryEventType];
+export type TelemetryEventName = (typeof TelemetryEventType)[keyof typeof TelemetryEventType];
 
 /**
  * Telemetry class with privacy safeguards
@@ -108,16 +108,16 @@ export class Telemetry {
     const sampleRate = config.sampleRate ?? 1.0;
     this.config = {
       enabled,
-      sampleRate,                      // Send all events by default
+      sampleRate, // Send all events by default
       maxQueueSize: config.maxQueueSize ?? 1000,
       flushInterval: config.flushInterval ?? 5000, // 5 seconds
-      includePii: config.includePii ?? false,    // Privacy first - opt-in
+      includePii: config.includePii ?? false, // Privacy first - opt-in
       redactPaths: config.redactPaths ?? [],
     };
     this.logger = getLogger();
     this.clock = getClock();
     this.enabled = enabled && Math.random() < sampleRate;
-    
+
     if (this.enabled) {
       this.startFlushTimer();
     }
@@ -213,7 +213,11 @@ export class Telemetry {
   /**
    * Record an error
    */
-  errorOccurred(errorName: string, errorMessage: string, properties?: Record<string, unknown>): void {
+  errorOccurred(
+    errorName: string,
+    errorMessage: string,
+    properties?: Record<string, unknown>
+  ): void {
     this.record({
       type: TelemetryEventType.ERROR_OCCURRED,
       properties: { errorName, errorMessage, ...properties },
@@ -300,7 +304,7 @@ export class Telemetry {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.config.apiKey}`,
+          Authorization: `Bearer ${this.config.apiKey}`,
         },
         body: JSON.stringify({ events }),
       });

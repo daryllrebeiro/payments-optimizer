@@ -1,7 +1,7 @@
 /**
  * Clock abstraction for deterministic time handling
  * Epic 1.8: Enables time-based testing without Date.now() / new Date()
- * 
+ *
  * Provides:
  * - Injectable time source for production and tests
  * - Controlled time progression in tests

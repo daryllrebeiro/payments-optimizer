@@ -36,10 +36,7 @@ export class PublicBenefitCatalog {
   /**
    * Gets cached benefits or computes and caches them
    */
-  private getCachedBenefits(
-    merchantId: string,
-    userProgramIds: string[]
-  ): PartnerBenefit[] {
+  private getCachedBenefits(merchantId: string, userProgramIds: string[]): PartnerBenefit[] {
     const key: MemoKey = `${merchantId}:${userProgramIds.sort().join(',')}`;
     const now = Date.now();
 
@@ -48,9 +45,9 @@ export class PublicBenefitCatalog {
       return cached.benefits;
     }
 
-    const benefits = this.graph.getMerchantBenefitsForPrograms(merchantId, userProgramIds).map(
-      (h) => h.benefit
-    );
+    const benefits = this.graph
+      .getMerchantBenefitsForPrograms(merchantId, userProgramIds)
+      .map((h) => h.benefit);
     this.memoCache.set(key, { timestamp: now, benefits });
     return benefits;
   }

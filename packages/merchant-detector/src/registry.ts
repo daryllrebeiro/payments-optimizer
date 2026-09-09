@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- legacy explicit-any usage; remove when typed */
 import { MerchantAdapter, MerchantDetectionResult, PageContext } from '@payments-optimizer/domain';
 import { AmazonAdapter } from './adapters/amazon.js';
 import { FlipkartAdapter } from './adapters/flipkart.js';
@@ -49,12 +50,16 @@ export function getAdapterForContext(context: PageContext): MerchantAdapter {
  * would require integrating with @payments-optimizer/plugins package
  */
 export function registerPlugin(plugin: any): void {
-  console.log('[merchant-detector] Plugin registration: This is a placeholder for optional plugin system');
+  console.log(
+    '[merchant-detector] Plugin registration: This is a placeholder for optional plugin system'
+  );
 }
 
 /**
  * Unregister a plugin
  */
 export function unregisterPlugin(pluginId: string): void {
-  console.log('[merchant-detector] Plugin unregistration: This is a placeholder for optional plugin system');
+  console.log(
+    '[merchant-detector] Plugin unregistration: This is a placeholder for optional plugin system'
+  );
 }

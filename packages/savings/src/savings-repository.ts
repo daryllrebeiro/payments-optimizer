@@ -1,4 +1,10 @@
-import { StorageRepository, InMemoryRepository, IndexedDbRepository, VersionedEntity, verifyIntegrity } from '@payments-optimizer/storage';
+import {
+  StorageRepository,
+  InMemoryRepository,
+  IndexedDbRepository,
+  VersionedEntity,
+  verifyIntegrity,
+} from '@payments-optimizer/storage';
 import type { SavingsEntry } from './types';
 
 /**

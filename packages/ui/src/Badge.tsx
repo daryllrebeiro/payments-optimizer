@@ -6,11 +6,7 @@ export interface BadgeProps {
   size?: 'sm' | 'md';
 }
 
-export const Badge: React.FC<BadgeProps> = ({
-  children,
-  variant = 'neutral',
-  size = 'md',
-}) => {
+export const Badge: React.FC<BadgeProps> = ({ children, variant = 'neutral', size = 'md' }) => {
   const variants = {
     success: 'bg-green-100 text-green-800 ring-green-600/20',
     warning: 'bg-yellow-100 text-yellow-800 ring-yellow-600/20',

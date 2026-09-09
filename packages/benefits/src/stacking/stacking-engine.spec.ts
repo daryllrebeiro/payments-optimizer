@@ -29,17 +29,20 @@ function createCart(
   items: Array<{ id: string; name: string; price: Money; quantity: number }>,
   currency: string
 ): Cart {
-  const cartItems: CartItem[] = items.map(item => ({
+  const cartItems: CartItem[] = items.map((item) => ({
     id: item.id,
     name: item.name,
     price: item.price,
     quantity: item.quantity,
   }));
 
-  const subtotal = cartItems.reduce((sum, item) => ({
-    amountMinor: sum.amountMinor + item.price.amountMinor * BigInt(item.quantity),
-    currency: currency as 'INR' | 'USD' | 'EUR' | 'GBP',
-  }), { amountMinor: 0n, currency: currency as 'INR' | 'USD' | 'EUR' | 'GBP' });
+  const subtotal = cartItems.reduce(
+    (sum, item) => ({
+      amountMinor: sum.amountMinor + item.price.amountMinor * BigInt(item.quantity),
+      currency: currency as 'INR' | 'USD' | 'EUR' | 'GBP',
+    }),
+    { amountMinor: 0n, currency: currency as 'INR' | 'USD' | 'EUR' | 'GBP' }
+  );
 
   return {
     merchantId,
@@ -116,9 +119,11 @@ describe('BenefitStackingEngine', () => {
     });
 
     it('should process cart with items', () => {
-      const cart = createCart('amazon', [
-        { id: 'item1', name: 'Product 1', price: createMoney(100, 'INR'), quantity: 1 },
-      ], 'INR');
+      const cart = createCart(
+        'amazon',
+        [{ id: 'item1', name: 'Product 1', price: createMoney(100, 'INR'), quantity: 1 }],
+        'INR'
+      );
 
       expect(cart.total.amountMinor).toBe(10000n);
     });
@@ -131,25 +136,31 @@ describe('BenefitStackingEngine', () => {
       ];
 
       const engineWithVouchers = new BenefitStackingEngine(vouchers);
-      const cart = createCart('amazon', [
-        { id: 'item1', name: 'Product 1', price: createMoney(200, 'INR'), quantity: 1 },
-      ], 'INR');
+      const cart = createCart(
+        'amazon',
+        [{ id: 'item1', name: 'Product 1', price: createMoney(200, 'INR'), quantity: 1 }],
+        'INR'
+      );
 
-      const results = engineWithVouchers.generateStackingCombinations(cart, {
-        version: 1,
-        currency: 'INR',
-        paymentMethods: [],
-        rewardPreferences: {
-          defaultValuations: {},
+      const results = engineWithVouchers.generateStackingCombinations(
+        cart,
+        {
+          version: 1,
+          currency: 'INR',
+          paymentMethods: [],
+          rewardPreferences: {
+            defaultValuations: {},
+          },
+          optimizationPreferences: {
+            immediateSavingsWeight: 1.0,
+            rewardValueWeight: 1.0,
+            milestoneWeight: 0.5,
+            simplicityWeight: 0.5,
+            riskWeight: 0.5,
+          },
         },
-        optimizationPreferences: {
-          immediateSavingsWeight: 1.0,
-          rewardValueWeight: 1.0,
-          milestoneWeight: 0.5,
-          simplicityWeight: 0.5,
-          riskWeight: 0.5,
-        },
-      }, []);
+        []
+      );
 
       expect(results.length).toBeGreaterThan(0);
       expect(results[0]!.vouchersApplied).toHaveLength(0); // Base option
@@ -162,25 +173,31 @@ describe('BenefitStackingEngine', () => {
       ];
 
       const engineWithVouchers = new BenefitStackingEngine(vouchers);
-      const cart = createCart('amazon', [
-        { id: 'item1', name: 'Product 1', price: createMoney(500, 'INR'), quantity: 1 },
-      ], 'INR');
+      const cart = createCart(
+        'amazon',
+        [{ id: 'item1', name: 'Product 1', price: createMoney(500, 'INR'), quantity: 1 }],
+        'INR'
+      );
 
-      const results = engineWithVouchers.generateStackingCombinations(cart, {
-        version: 1,
-        currency: 'INR',
-        paymentMethods: [],
-        rewardPreferences: {
-          defaultValuations: {},
+      const results = engineWithVouchers.generateStackingCombinations(
+        cart,
+        {
+          version: 1,
+          currency: 'INR',
+          paymentMethods: [],
+          rewardPreferences: {
+            defaultValuations: {},
+          },
+          optimizationPreferences: {
+            immediateSavingsWeight: 1.0,
+            rewardValueWeight: 1.0,
+            milestoneWeight: 0.5,
+            simplicityWeight: 0.5,
+            riskWeight: 0.5,
+          },
         },
-        optimizationPreferences: {
-          immediateSavingsWeight: 1.0,
-          rewardValueWeight: 1.0,
-          milestoneWeight: 0.5,
-          simplicityWeight: 0.5,
-          riskWeight: 0.5,
-        },
-      }, []);
+        []
+      );
 
       expect(results.length).toBeGreaterThan(0);
     });
@@ -206,25 +223,31 @@ describe('BenefitStackingEngine', () => {
         },
       ];
 
-      const cart = createCart('amazon', [
-        { id: 'item1', name: 'Product 1', price: createMoney(500, 'INR'), quantity: 1 },
-      ], 'INR');
+      const cart = createCart(
+        'amazon',
+        [{ id: 'item1', name: 'Product 1', price: createMoney(500, 'INR'), quantity: 1 }],
+        'INR'
+      );
 
-      const results = engine.generateStackingCombinations(cart, {
-        version: 1,
-        currency: 'INR',
-        paymentMethods: [],
-        rewardPreferences: {
-          defaultValuations: {},
+      const results = engine.generateStackingCombinations(
+        cart,
+        {
+          version: 1,
+          currency: 'INR',
+          paymentMethods: [],
+          rewardPreferences: {
+            defaultValuations: {},
+          },
+          optimizationPreferences: {
+            immediateSavingsWeight: 1.0,
+            rewardValueWeight: 1.0,
+            milestoneWeight: 0.5,
+            simplicityWeight: 0.5,
+            riskWeight: 0.5,
+          },
         },
-        optimizationPreferences: {
-          immediateSavingsWeight: 1.0,
-          rewardValueWeight: 1.0,
-          milestoneWeight: 0.5,
-          simplicityWeight: 0.5,
-          riskWeight: 0.5,
-        },
-      }, partnerBenefits);
+        partnerBenefits
+      );
 
       expect(results.length).toBeGreaterThan(0);
     });
@@ -232,27 +255,35 @@ describe('BenefitStackingEngine', () => {
 
   describe('Stacking combinations', () => {
     it('should generate base option without any vouchers or benefits', () => {
-      const cart = createCart('amazon', [
-        { id: 'item1', name: 'Product 1', price: createMoney(100, 'INR'), quantity: 1 },
-      ], 'INR');
+      const cart = createCart(
+        'amazon',
+        [{ id: 'item1', name: 'Product 1', price: createMoney(100, 'INR'), quantity: 1 }],
+        'INR'
+      );
 
-      const results = engine.generateStackingCombinations(cart, {
-        version: 1,
-        currency: 'INR',
-        paymentMethods: [],
-        rewardPreferences: {
-          defaultValuations: {},
+      const results = engine.generateStackingCombinations(
+        cart,
+        {
+          version: 1,
+          currency: 'INR',
+          paymentMethods: [],
+          rewardPreferences: {
+            defaultValuations: {},
+          },
+          optimizationPreferences: {
+            immediateSavingsWeight: 1.0,
+            rewardValueWeight: 1.0,
+            milestoneWeight: 0.5,
+            simplicityWeight: 0.5,
+            riskWeight: 0.5,
+          },
         },
-        optimizationPreferences: {
-          immediateSavingsWeight: 1.0,
-          rewardValueWeight: 1.0,
-          milestoneWeight: 0.5,
-          simplicityWeight: 0.5,
-          riskWeight: 0.5,
-        },
-      }, []);
+        []
+      );
 
-      const baseOption = results.find(r => r.vouchersApplied.length === 0 && !r.partnerBenefitApplied);
+      const baseOption = results.find(
+        (r) => r.vouchersApplied.length === 0 && !r.partnerBenefitApplied
+      );
 
       expect(baseOption).toBeDefined();
       expect(baseOption!.voucherSavings.amountMinor).toBe(0n);
@@ -283,28 +314,36 @@ describe('BenefitStackingEngine', () => {
       ];
 
       const engineWithVouchers = new BenefitStackingEngine(vouchers);
-      const cart = createCart('amazon', [
-        { id: 'item1', name: 'Product 1', price: createMoney(500, 'INR'), quantity: 1 },
-      ], 'INR');
+      const cart = createCart(
+        'amazon',
+        [{ id: 'item1', name: 'Product 1', price: createMoney(500, 'INR'), quantity: 1 }],
+        'INR'
+      );
 
-      const results = engineWithVouchers.generateStackingCombinations(cart, {
-        version: 1,
-        currency: 'INR',
-        paymentMethods: [],
-        rewardPreferences: {
-          defaultValuations: {},
+      const results = engineWithVouchers.generateStackingCombinations(
+        cart,
+        {
+          version: 1,
+          currency: 'INR',
+          paymentMethods: [],
+          rewardPreferences: {
+            defaultValuations: {},
+          },
+          optimizationPreferences: {
+            immediateSavingsWeight: 1.0,
+            rewardValueWeight: 1.0,
+            milestoneWeight: 0.5,
+            simplicityWeight: 0.5,
+            riskWeight: 0.5,
+          },
         },
-        optimizationPreferences: {
-          immediateSavingsWeight: 1.0,
-          rewardValueWeight: 1.0,
-          milestoneWeight: 0.5,
-          simplicityWeight: 0.5,
-          riskWeight: 0.5,
-        },
-      }, partnerBenefits);
+        partnerBenefits
+      );
 
       // Voucher combinations should still be generated, but not stacked with partner benefit
-      const stackedResults = results.filter(r => r.vouchersApplied.length > 0 && r.partnerBenefitApplied);
+      const stackedResults = results.filter(
+        (r) => r.vouchersApplied.length > 0 && r.partnerBenefitApplied
+      );
       expect(stackedResults).toHaveLength(0);
     });
   });
@@ -314,29 +353,43 @@ describe('BenefitStackingEngine', () => {
       // Create many vouchers
       const vouchers: UserVoucher[] = [];
       for (let i = 0; i < 10; i++) {
-        vouchers.push(createVoucher(`v${i}`, 'amazon', `Voucher ${i}`, createMoney(100 + i * 10, 'INR'), '2026-12-31T23:59:59Z'));
+        vouchers.push(
+          createVoucher(
+            `v${i}`,
+            'amazon',
+            `Voucher ${i}`,
+            createMoney(100 + i * 10, 'INR'),
+            '2026-12-31T23:59:59Z'
+          )
+        );
       }
 
       const engineWithVouchers = new BenefitStackingEngine(vouchers, 5); // Beam width 5
-      const cart = createCart('amazon', [
-        { id: 'item1', name: 'Product 1', price: createMoney(1000, 'INR'), quantity: 1 },
-      ], 'INR');
+      const cart = createCart(
+        'amazon',
+        [{ id: 'item1', name: 'Product 1', price: createMoney(1000, 'INR'), quantity: 1 }],
+        'INR'
+      );
 
-      const results = engineWithVouchers.generateStackingCombinations(cart, {
-        version: 1,
-        currency: 'INR',
-        paymentMethods: [],
-        rewardPreferences: {
-          defaultValuations: {},
+      const results = engineWithVouchers.generateStackingCombinations(
+        cart,
+        {
+          version: 1,
+          currency: 'INR',
+          paymentMethods: [],
+          rewardPreferences: {
+            defaultValuations: {},
+          },
+          optimizationPreferences: {
+            immediateSavingsWeight: 1.0,
+            rewardValueWeight: 1.0,
+            milestoneWeight: 0.5,
+            simplicityWeight: 0.5,
+            riskWeight: 0.5,
+          },
         },
-        optimizationPreferences: {
-          immediateSavingsWeight: 1.0,
-          rewardValueWeight: 1.0,
-          milestoneWeight: 0.5,
-          simplicityWeight: 0.5,
-          riskWeight: 0.5,
-        },
-      }, []);
+        []
+      );
 
       expect(results.length).toBeGreaterThan(0);
       // With beam width 5 and 10 vouchers, should have fewer results than full power set
@@ -345,29 +398,43 @@ describe('BenefitStackingEngine', () => {
     it('should use exact power set for <=5 vouchers', () => {
       const vouchers: UserVoucher[] = [];
       for (let i = 0; i < 3; i++) {
-        vouchers.push(createVoucher(`v${i}`, 'amazon', `Voucher ${i}`, createMoney(100 + i * 10, 'INR'), '2026-12-31T23:59:59Z'));
+        vouchers.push(
+          createVoucher(
+            `v${i}`,
+            'amazon',
+            `Voucher ${i}`,
+            createMoney(100 + i * 10, 'INR'),
+            '2026-12-31T23:59:59Z'
+          )
+        );
       }
 
       const engineWithVouchers = new BenefitStackingEngine(vouchers, 5);
-      const cart = createCart('amazon', [
-        { id: 'item1', name: 'Product 1', price: createMoney(1000, 'INR'), quantity: 1 },
-      ], 'INR');
+      const cart = createCart(
+        'amazon',
+        [{ id: 'item1', name: 'Product 1', price: createMoney(1000, 'INR'), quantity: 1 }],
+        'INR'
+      );
 
-      const results = engineWithVouchers.generateStackingCombinations(cart, {
-        version: 1,
-        currency: 'INR',
-        paymentMethods: [],
-        rewardPreferences: {
-          defaultValuations: {},
+      const results = engineWithVouchers.generateStackingCombinations(
+        cart,
+        {
+          version: 1,
+          currency: 'INR',
+          paymentMethods: [],
+          rewardPreferences: {
+            defaultValuations: {},
+          },
+          optimizationPreferences: {
+            immediateSavingsWeight: 1.0,
+            rewardValueWeight: 1.0,
+            milestoneWeight: 0.5,
+            simplicityWeight: 0.5,
+            riskWeight: 0.5,
+          },
         },
-        optimizationPreferences: {
-          immediateSavingsWeight: 1.0,
-          rewardValueWeight: 1.0,
-          milestoneWeight: 0.5,
-          simplicityWeight: 0.5,
-          riskWeight: 0.5,
-        },
-      }, []);
+        []
+      );
 
       // With 3 vouchers, power set = 2^3 = 8 combinations (including empty set)
       expect(results.length).toBe(8);
@@ -377,29 +444,41 @@ describe('BenefitStackingEngine', () => {
   describe('Edge cases', () => {
     it('should handle zero-value vouchers', () => {
       const vouchers: UserVoucher[] = [
-        createVoucher('v1', 'amazon', 'Free Shipping', createMoney(0, 'INR'), '2026-12-31T23:59:59Z'),
+        createVoucher(
+          'v1',
+          'amazon',
+          'Free Shipping',
+          createMoney(0, 'INR'),
+          '2026-12-31T23:59:59Z'
+        ),
       ];
 
       const engineWithVouchers = new BenefitStackingEngine(vouchers);
-      const cart = createCart('amazon', [
-        { id: 'item1', name: 'Product 1', price: createMoney(500, 'INR'), quantity: 1 },
-      ], 'INR');
+      const cart = createCart(
+        'amazon',
+        [{ id: 'item1', name: 'Product 1', price: createMoney(500, 'INR'), quantity: 1 }],
+        'INR'
+      );
 
-      const results = engineWithVouchers.generateStackingCombinations(cart, {
-        version: 1,
-        currency: 'INR',
-        paymentMethods: [],
-        rewardPreferences: {
-          defaultValuations: {},
+      const results = engineWithVouchers.generateStackingCombinations(
+        cart,
+        {
+          version: 1,
+          currency: 'INR',
+          paymentMethods: [],
+          rewardPreferences: {
+            defaultValuations: {},
+          },
+          optimizationPreferences: {
+            immediateSavingsWeight: 1.0,
+            rewardValueWeight: 1.0,
+            milestoneWeight: 0.5,
+            simplicityWeight: 0.5,
+            riskWeight: 0.5,
+          },
         },
-        optimizationPreferences: {
-          immediateSavingsWeight: 1.0,
-          rewardValueWeight: 1.0,
-          milestoneWeight: 0.5,
-          simplicityWeight: 0.5,
-          riskWeight: 0.5,
-        },
-      }, []);
+        []
+      );
 
       expect(results.length).toBeGreaterThan(0);
     });
@@ -413,50 +492,62 @@ describe('BenefitStackingEngine', () => {
       ];
 
       const engineWithVouchers = new BenefitStackingEngine(vouchers);
-      const cart = createCart('amazon', [
-        { id: 'item1', name: 'Product 1', price: createMoney(500, 'INR'), quantity: 1 },
-      ], 'INR');
+      const cart = createCart(
+        'amazon',
+        [{ id: 'item1', name: 'Product 1', price: createMoney(500, 'INR'), quantity: 1 }],
+        'INR'
+      );
 
-      const results = engineWithVouchers.generateStackingCombinations(cart, {
-        version: 1,
-        currency: 'INR',
-        paymentMethods: [],
-        rewardPreferences: {
-          defaultValuations: {},
+      const results = engineWithVouchers.generateStackingCombinations(
+        cart,
+        {
+          version: 1,
+          currency: 'INR',
+          paymentMethods: [],
+          rewardPreferences: {
+            defaultValuations: {},
+          },
+          optimizationPreferences: {
+            immediateSavingsWeight: 1.0,
+            rewardValueWeight: 1.0,
+            milestoneWeight: 0.5,
+            simplicityWeight: 0.5,
+            riskWeight: 0.5,
+          },
         },
-        optimizationPreferences: {
-          immediateSavingsWeight: 1.0,
-          rewardValueWeight: 1.0,
-          milestoneWeight: 0.5,
-          simplicityWeight: 0.5,
-          riskWeight: 0.5,
-        },
-      }, []);
+        []
+      );
 
       expect(results.length).toBeGreaterThan(0);
     });
 
     it('should handle empty voucher list', () => {
       const engineWithNoVouchers = new BenefitStackingEngine();
-      const cart = createCart('amazon', [
-        { id: 'item1', name: 'Product 1', price: createMoney(500, 'INR'), quantity: 1 },
-      ], 'INR');
+      const cart = createCart(
+        'amazon',
+        [{ id: 'item1', name: 'Product 1', price: createMoney(500, 'INR'), quantity: 1 }],
+        'INR'
+      );
 
-      const results = engineWithNoVouchers.generateStackingCombinations(cart, {
-        version: 1,
-        currency: 'INR',
-        paymentMethods: [],
-        rewardPreferences: {
-          defaultValuations: {},
+      const results = engineWithNoVouchers.generateStackingCombinations(
+        cart,
+        {
+          version: 1,
+          currency: 'INR',
+          paymentMethods: [],
+          rewardPreferences: {
+            defaultValuations: {},
+          },
+          optimizationPreferences: {
+            immediateSavingsWeight: 1.0,
+            rewardValueWeight: 1.0,
+            milestoneWeight: 0.5,
+            simplicityWeight: 0.5,
+            riskWeight: 0.5,
+          },
         },
-        optimizationPreferences: {
-          immediateSavingsWeight: 1.0,
-          rewardValueWeight: 1.0,
-          milestoneWeight: 0.5,
-          simplicityWeight: 0.5,
-          riskWeight: 0.5,
-        },
-      }, []);
+        []
+      );
 
       expect(results.length).toBe(1); // Only base option
     });

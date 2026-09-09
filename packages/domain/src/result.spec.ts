@@ -346,11 +346,9 @@ describe('Result', () => {
       const validateId = (id: number): Result<number, Error> =>
         id > 0 ? ok(id) : err(new Error('Invalid ID'));
 
-      const fetchUser = (id: number): Result<User, Error> =>
-        ok({ id, name: 'Alice' });
+      const fetchUser = (id: number): Result<User, Error> => ok({ id, name: 'Alice' });
 
-      const formatUser = (user: User): Result<string, Error> =>
-        ok(`User ${user.id}: ${user.name}`);
+      const formatUser = (user: User): Result<string, Error> => ok(`User ${user.id}: ${user.name}`);
 
       const result = validateId(123).andThen(fetchUser).andThen(formatUser);
 

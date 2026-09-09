@@ -2,7 +2,15 @@
  * Edge case test fixtures for comprehensive testing
  */
 
-import { Cart, CreditCard, Offer, Coupon, UserVoucher, Money, Currency } from '@payments-optimizer/domain';
+import {
+  Cart,
+  CreditCard,
+  Offer,
+  Coupon,
+  UserVoucher,
+  Money,
+  Currency,
+} from '@payments-optimizer/domain';
 
 function createMoney(amount: number, currency: Currency): Money {
   return {
@@ -160,7 +168,7 @@ export const complexStackingOffer: Offer = {
   ],
   benefit: {
     type: 'PERCENTAGE_DISCOUNT',
-    value: 0.20,
+    value: 0.2,
     cap: createMoney(50, 'USD'),
   },
   paymentRequirements: [],
@@ -315,7 +323,7 @@ export const nonStackableOffer: Offer = {
   conditions: [],
   benefit: {
     type: 'PERCENTAGE_DISCOUNT',
-    value: 0.30,
+    value: 0.3,
   },
   paymentRequirements: [],
   stackingPolicy: {

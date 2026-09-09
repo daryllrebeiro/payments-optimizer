@@ -22,12 +22,12 @@ import { OpportunityScorer } from '../opportunity/opportunity-scorer.js';
 
 /**
  * Converts reward points/miles to their monetary value based on user's valuation preferences.
- * 
+ *
  * @param reward - The reward amount in points/miles
  * @param rewardProgram - Name of the reward program (e.g., 'Chase Ultimate Rewards')
  * @param valuations - User's valuation mapping for different reward programs
  * @returns Monetary value of the rewards in the user's preferred currency
- * 
+ *
  * @example
  * ```typescript
  * const reward = { amountMinor: 10000n, currency: 'USD' }; // 100 points
@@ -55,14 +55,14 @@ function valueReward(
 /**
  * Unified benefit optimizer that combines vouchers, partner benefits, card rewards,
  * and milestone tracking to generate optimal payment strategies.
- * 
+ *
  * This is the main optimization engine that:
  * - Discovers relevant partner benefits from the catalog
  * - Generates stacking combinations of vouchers and perks
  * - Evaluates payment methods for residual cart totals
  * - Calculates immediate savings, rewards, and future benefits
  * - Scores strategies using opportunity scoring algorithm
- * 
+ *
  * @example
  * ```typescript
  * const optimizer = new UnifiedBenefitOptimizer();
@@ -77,7 +77,7 @@ export class UnifiedBenefitOptimizer {
 
   /**
    * Creates a new UnifiedBenefitOptimizer instance.
-   * 
+   *
    * @param catalog - Optional PublicBenefitCatalog instance. If not provided, creates a new one.
    */
   constructor(catalog?: PublicBenefitCatalog) {
@@ -86,16 +86,16 @@ export class UnifiedBenefitOptimizer {
 
   /**
    * Optimizes payment strategy for a given cart and user profile.
-   * 
+   *
    * Generates all possible benefit stacking combinations and evaluates each payment method
    * to find the strategies that maximize savings and rewards.
-   * 
+   *
    * @param cart - Shopping cart with items, totals, and merchant information
    * @param profile - User's profile including payment methods, vouchers, and preferences
    * @param _additionalOffers - Optional additional offers (currently unused, reserved for future use)
    * @param now - Current timestamp for expiry calculations (defaults to Date.now())
    * @returns Array of strategies sorted by opportunity score (best first)
-   * 
+   *
    * @example
    * ```typescript
    * const cart: Cart = {
@@ -104,7 +104,7 @@ export class UnifiedBenefitOptimizer {
    *   total: { amountMinor: 99999n, currency: 'USD' },
    *   currency: 'USD'
    * };
-   * 
+   *
    * const profile: UserProfile = {
    *   version: 1,
    *   currency: 'USD',
@@ -112,7 +112,7 @@ export class UnifiedBenefitOptimizer {
    *   rewardPreferences: { defaultValuations: {} },
    *   optimizationPreferences: { ... }
    * };
-   * 
+   *
    * const strategies = optimizer.optimize(cart, profile);
    * ```
    */

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- legacy explicit-any usage; remove when typed */
 import type { Plugin } from './types';
 
 /**
@@ -17,13 +18,15 @@ export class PluginLoader {
   /**
    * Validate plugin manifest
    */
-  validateManifest(manifest: unknown): manifest is { id: string; name: string; version: string; adapters: any[] } {
+  validateManifest(
+    manifest: unknown
+  ): manifest is { id: string; name: string; version: string; adapters: any[] } {
     if (typeof manifest !== 'object' || manifest === null) {
       return false;
     }
 
     const m = manifest as any;
-    
+
     return (
       typeof m.id === 'string' &&
       typeof m.name === 'string' &&

@@ -2,7 +2,11 @@
  * Benchmarks for offer stacking operations
  */
 
-import { hdfcInstantDiscountOffer, chaseOffers, amazonCart } from '@payments-optimizer/test-fixtures';
+import {
+  hdfcInstantDiscountOffer,
+  chaseOffers,
+  amazonCart,
+} from '@payments-optimizer/test-fixtures';
 import { checkEligibility, calculateBenefit } from '@payments-optimizer/rules-engine';
 
 export function createOfferEngineBenchmarks() {

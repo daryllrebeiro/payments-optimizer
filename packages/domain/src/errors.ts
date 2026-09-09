@@ -1,6 +1,6 @@
 /**
  * Structured error classes for domain-driven error handling
- * 
+ *
  * Each error class has:
  * - A unique error code (for programmatic handling)
  * - Context data (for debugging)
@@ -13,7 +13,11 @@ import { DomainError } from './result.js';
  * Validation errors - input data doesn't meet requirements
  */
 export class ValidationError extends DomainError {
-  constructor(message: string, public readonly field?: string, public readonly value?: unknown) {
+  constructor(
+    message: string,
+    public readonly field?: string,
+    public readonly value?: unknown
+  ) {
     super(message, 'VALIDATION_ERROR', { field, value });
   }
 }
@@ -49,7 +53,11 @@ export class InsufficientResourceError extends DomainError {
  * Operation timeout errors - operation took too long
  */
 export class TimeoutError extends DomainError {
-  constructor(message: string, public readonly timeoutMs: number, public readonly operation: string) {
+  constructor(
+    message: string,
+    public readonly timeoutMs: number,
+    public readonly operation: string
+  ) {
     super(message, 'TIMEOUT', { timeoutMs, operation });
   }
 }
@@ -77,7 +85,10 @@ export class CircuitBreakerOpenError extends DomainError {
     public readonly circuitName: string,
     public readonly nextAttemptAt?: Date
   ) {
-    super(message, 'CIRCUIT_BREAKER_OPEN', { circuitName, nextAttemptAt: nextAttemptAt?.toISOString() });
+    super(message, 'CIRCUIT_BREAKER_OPEN', {
+      circuitName,
+      nextAttemptAt: nextAttemptAt?.toISOString(),
+    });
   }
 }
 
@@ -140,7 +151,11 @@ export class MigrationError extends DomainError {
  * Configuration errors - invalid configuration
  */
 export class ConfigurationError extends DomainError {
-  constructor(message: string, public readonly configKey?: string, public readonly configValue?: unknown) {
+  constructor(
+    message: string,
+    public readonly configKey?: string,
+    public readonly configValue?: unknown
+  ) {
     super(message, 'CONFIGURATION_ERROR', { configKey, configValue });
   }
 }
@@ -162,7 +177,10 @@ export class AuthorizationError extends DomainError {
  * Business logic errors - operation violates business rules
  */
 export class BusinessLogicError extends DomainError {
-  constructor(message: string, public readonly rule: string) {
+  constructor(
+    message: string,
+    public readonly rule: string
+  ) {
     super(message, 'BUSINESS_LOGIC_ERROR', { rule });
   }
 }

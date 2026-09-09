@@ -34,7 +34,7 @@ export class OfferApiClient {
 
   constructor(private config: OfferApiConfig) {
     this.requestTimeout = config.timeout;
-    
+
     // Initialize circuit breaker with custom or default config
     this.circuitBreaker = createCircuitBreaker('offer-api', {
       failureThreshold: config.circuitBreaker?.failureThreshold ?? 5,
@@ -49,17 +49,14 @@ export class OfferApiClient {
    * @param params - Optional query parameters
    * @returns Array of offers or empty array on failure
    */
-  async getOffers(
-    merchantId: string,
-    params?: OfferQueryParams
-  ): Promise<Offer[]> {
+  async getOffers(merchantId: string, params?: OfferQueryParams): Promise<Offer[]> {
     try {
       return await this.circuitBreaker.execute(async () => {
         return await this.fetchOffersInternal(merchantId, params);
       });
     } catch (error) {
       console.error(`[OfferApiClient] Failed to fetch offers for ${merchantId}:`, error);
-      
+
       // Return empty array as fallback - don't propagate error to UI
       return [];
     }
@@ -121,7 +118,7 @@ export class OfferApiClient {
   ): Promise<Offer[]> {
     const url = new URL(`${this.config.baseUrl}/offers`);
     url.searchParams.set('merchantId', merchantId);
-    
+
     if (params?.category) url.searchParams.set('category', params.category);
     if (params?.active !== undefined) url.searchParams.set('active', String(params.active));
     if (params?.minValue) url.searchParams.set('minValue', String(params.minValue));
@@ -134,7 +131,7 @@ export class OfferApiClient {
       const response = await fetch(url.toString(), {
         signal: controller.signal,
         headers: {
-          'Accept': 'application/json',
+          Accept: 'application/json',
           'Content-Type': 'application/json',
         },
       });
@@ -164,7 +161,7 @@ export class OfferApiClient {
       const response = await fetch(url, {
         signal: controller.signal,
         headers: {
-          'Accept': 'application/json',
+          Accept: 'application/json',
           'Content-Type': 'application/json',
         },
       });
@@ -189,7 +186,7 @@ export class OfferApiClient {
    */
   private async searchOffersInternal(params: OfferQueryParams): Promise<Offer[]> {
     const url = new URL(`${this.config.baseUrl}/offers/search`);
-    
+
     if (params.merchantId) url.searchParams.set('merchantId', params.merchantId);
     if (params.category) url.searchParams.set('category', params.category);
     if (params.active !== undefined) url.searchParams.set('active', String(params.active));
@@ -203,7 +200,7 @@ export class OfferApiClient {
       const response = await fetch(url.toString(), {
         signal: controller.signal,
         headers: {
-          'Accept': 'application/json',
+          Accept: 'application/json',
           'Content-Type': 'application/json',
         },
       });

@@ -69,18 +69,18 @@ describe('OpportunityScorer', () => {
   });
 
   describe('Urgency premium', () => {
-    it('should add high urgency premium for vouchers expiring within 24 hours', () => {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(10, 0, 0, 0);
+    const baseNow = new Date('2026-09-07T00:00:00.000Z').getTime();
+    const HOUR_MS = 60 * 60 * 1000;
+    const DAY_MS = 24 * HOUR_MS;
 
+    it('should add high urgency premium for vouchers expiring within 24 hours', () => {
       const input = {
         immediateSavings: { amountMinor: 1000n, currency: 'INR' as const },
         rewardValue: { amountMinor: 0n, currency: 'INR' as const },
-        appliedVouchers: [{ expiryDate: tomorrow.toISOString() }],
+        appliedVouchers: [{ expiryDate: new Date(baseNow + 12 * HOUR_MS).toISOString() }],
         isPartnerPromoApplied: false,
         complexityStepsCount: 0,
-        now: Date.now(),
+        now: baseNow,
       };
 
       const result = scorer.calculateScore(input, defaultPrefs);
@@ -89,17 +89,13 @@ describe('OpportunityScorer', () => {
     });
 
     it('should add medium urgency premium for vouchers expiring within 3 days', () => {
-      const in3Days = new Date();
-      in3Days.setDate(in3Days.getDate() + 3);
-      in3Days.setHours(10, 0, 0, 0);
-
       const input = {
         immediateSavings: { amountMinor: 1000n, currency: 'INR' as const },
         rewardValue: { amountMinor: 0n, currency: 'INR' as const },
-        appliedVouchers: [{ expiryDate: in3Days.toISOString() }],
+        appliedVouchers: [{ expiryDate: new Date(baseNow + 2 * DAY_MS).toISOString() }],
         isPartnerPromoApplied: false,
         complexityStepsCount: 0,
-        now: Date.now(),
+        now: baseNow,
       };
 
       const result = scorer.calculateScore(input, defaultPrefs);
@@ -108,17 +104,13 @@ describe('OpportunityScorer', () => {
     });
 
     it('should add low urgency premium for vouchers expiring within 7 days', () => {
-      const in7Days = new Date();
-      in7Days.setDate(in7Days.getDate() + 7);
-      in7Days.setHours(10, 0, 0, 0);
-
       const input = {
         immediateSavings: { amountMinor: 1000n, currency: 'INR' as const },
         rewardValue: { amountMinor: 0n, currency: 'INR' as const },
-        appliedVouchers: [{ expiryDate: in7Days.toISOString() }],
+        appliedVouchers: [{ expiryDate: new Date(baseNow + 5 * DAY_MS).toISOString() }],
         isPartnerPromoApplied: false,
         complexityStepsCount: 0,
-        now: Date.now(),
+        now: baseNow,
       };
 
       const result = scorer.calculateScore(input, defaultPrefs);
@@ -127,16 +119,13 @@ describe('OpportunityScorer', () => {
     });
 
     it('should not add urgency premium for vouchers expiring after 7 days', () => {
-      const in30Days = new Date();
-      in30Days.setDate(in30Days.getDate() + 30);
-
       const input = {
         immediateSavings: { amountMinor: 1000n, currency: 'INR' as const },
         rewardValue: { amountMinor: 0n, currency: 'INR' as const },
-        appliedVouchers: [{ expiryDate: in30Days.toISOString() }],
+        appliedVouchers: [{ expiryDate: new Date(baseNow + 30 * DAY_MS).toISOString() }],
         isPartnerPromoApplied: false,
         complexityStepsCount: 0,
-        now: Date.now(),
+        now: baseNow,
       };
 
       const result = scorer.calculateScore(input, defaultPrefs);
@@ -163,8 +152,8 @@ describe('OpportunityScorer', () => {
 
   describe('Opportunity cost', () => {
     it('should calculate opportunity cost for long-expiry vouchers', () => {
-      const in30Days = new Date();
-      in30Days.setDate(in30Days.getDate() + 30);
+      const baseNow = new Date('2026-09-07T00:00:00.000Z').getTime();
+      const in30Days = new Date(baseNow + 30 * 24 * 60 * 60 * 1000);
 
       const input = {
         immediateSavings: { amountMinor: 1000n, currency: 'INR' as const },
@@ -173,7 +162,7 @@ describe('OpportunityScorer', () => {
         isPartnerPromoApplied: false,
         alternativeCardPromoSavings: { amountMinor: 2000n, currency: 'INR' as const },
         complexityStepsCount: 0,
-        now: Date.now(),
+        now: baseNow,
       };
 
       const result = scorer.calculateScore(input, defaultPrefs);

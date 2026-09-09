@@ -86,22 +86,22 @@ In the browser environment, plugins are bundled with the extension. For developm
 
 ## Plugin Manifest Schema
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| id | string | Yes | Unique plugin identifier |
-| name | string | Yes | Display name |
-| version | string | Yes | Plugin version |
-| description | string | No | Plugin description |
-| author | string | No | Author info |
-| adapters | array | Yes | List of adapter configurations |
+| Field       | Type   | Required | Description                    |
+| ----------- | ------ | -------- | ------------------------------ |
+| id          | string | Yes      | Unique plugin identifier       |
+| name        | string | Yes      | Display name                   |
+| version     | string | Yes      | Plugin version                 |
+| description | string | No       | Plugin description             |
+| author      | string | No       | Author info                    |
+| adapters    | array  | Yes      | List of adapter configurations |
 
 ## Adapter Config Schema
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| merchantId | string | Yes | Merchant identifier |
-| adapterType | 'custom' \| 'generic' | Yes | Adapter type |
-| config | object | No | Custom configuration |
+| Field       | Type                  | Required | Description          |
+| ----------- | --------------------- | -------- | -------------------- |
+| merchantId  | string                | Yes      | Merchant identifier  |
+| adapterType | 'custom' \| 'generic' | Yes      | Adapter type         |
+| config      | object                | No       | Custom configuration |
 
 ## License
 

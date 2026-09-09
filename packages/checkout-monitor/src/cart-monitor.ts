@@ -122,14 +122,7 @@ export class CartMonitor {
    */
   private affectsCart(mutation: MutationRecord): boolean {
     // Look for cart-related DOM changes
-    const cartSelectors = [
-      '.cart',
-      '.checkout',
-      '.total',
-      '.price',
-      '[data-cart]',
-      '[data-total]',
-    ];
+    const cartSelectors = ['.cart', '.checkout', '.total', '.price', '[data-cart]', '[data-total]'];
 
     for (const node of [mutation.target, ...mutation.addedNodes]) {
       if (node instanceof HTMLElement) {
@@ -199,7 +192,9 @@ export class CartMonitor {
     const oldTotal = Number(oldCart.total.amountMinor);
     const newTotal = Number(newCart.total.amountMinor);
     const diff = Math.abs(oldTotal - newTotal);
-    const threshold = this.options.minChangeThreshold ? oldTotal * this.options.minChangeThreshold : 0;
+    const threshold = this.options.minChangeThreshold
+      ? oldTotal * this.options.minChangeThreshold
+      : 0;
 
     if (diff > threshold) {
       return true;

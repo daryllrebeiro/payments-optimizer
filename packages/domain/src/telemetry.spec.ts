@@ -1,10 +1,17 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- legacy explicit-any usage; remove when typed */
 /**
  * Tests for privacy-first telemetry
  * Epic 1.9: Observability with structured logging and privacy-first telemetry
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { Telemetry, TelemetryEventType, getTelemetry, setTelemetry, resetTelemetry } from './telemetry.js';
+import {
+  Telemetry,
+  TelemetryEventType,
+  getTelemetry,
+  setTelemetry,
+  resetTelemetry,
+} from './telemetry.js';
 
 describe('Telemetry', () => {
   beforeEach(() => {
@@ -79,17 +86,17 @@ describe('Telemetry', () => {
   describe('Business events', () => {
     it('should record benefit applied', () => {
       const telemetry = Telemetry.create({ enabled: true });
-      telemetry.benefitApplied('benefit123', 15.50, { merchant: 'amazon' });
+      telemetry.benefitApplied('benefit123', 15.5, { merchant: 'amazon' });
     });
 
     it('should record voucher burned', () => {
       const telemetry = Telemetry.create({ enabled: true });
-      telemetry.voucherBurned('voucher456', 10.00, { merchant: 'target' });
+      telemetry.voucherBurned('voucher456', 10.0, { merchant: 'target' });
     });
 
     it('should record savings saved', () => {
       const telemetry = Telemetry.create({ enabled: true });
-      telemetry.savingsSaved(25.50, 3);
+      telemetry.savingsSaved(25.5, 3);
     });
 
     it('should record optimization completed', () => {

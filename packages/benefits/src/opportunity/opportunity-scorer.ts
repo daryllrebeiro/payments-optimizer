@@ -8,8 +8,13 @@ import { UserVoucher } from '../domain/types.js';
  * @returns Number amount in major currency units (e.g., rupees, dollars)
  */
 function safeBigIntToNumber(amountMinor: bigint): number {
-  if (amountMinor > BigInt(Number.MAX_SAFE_INTEGER) || amountMinor < -BigInt(Number.MAX_SAFE_INTEGER)) {
-    console.warn(`BigInt value ${amountMinor.toString()} exceeds safe integer range, truncating to 2 decimal places`);
+  if (
+    amountMinor > BigInt(Number.MAX_SAFE_INTEGER) ||
+    amountMinor < -BigInt(Number.MAX_SAFE_INTEGER)
+  ) {
+    console.warn(
+      `BigInt value ${amountMinor.toString()} exceeds safe integer range, truncating to 2 decimal places`
+    );
     // Divide by 100 first to reduce magnitude, then convert
     return Number(amountMinor / 100n);
   }

@@ -1,4 +1,10 @@
-import type { MerchantAdapter, PageContext, MerchantDetectionResult, Cart, ProductContext } from '@payments-optimizer/domain';
+import type {
+  MerchantAdapter,
+  PageContext,
+  MerchantDetectionResult,
+  Cart,
+  ProductContext,
+} from '@payments-optimizer/domain';
 
 export interface AdapterConfig {
   merchantId: string;

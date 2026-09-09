@@ -65,7 +65,12 @@ export interface DeserializationOptions {
 export class SerializationError extends Error {
   constructor(
     message: string,
-    public readonly code: 'SERIALIZATION_FAILED' | 'DESERIALIZATION_FAILED' | 'VALIDATION_FAILED' | 'VERSION_MISMATCH' | 'EXPIRED',
+    public readonly code:
+      | 'SERIALIZATION_FAILED'
+      | 'DESERIALIZATION_FAILED'
+      | 'VALIDATION_FAILED'
+      | 'VERSION_MISMATCH'
+      | 'EXPIRED',
     public readonly details?: unknown
   ) {
     super(message);
@@ -90,14 +95,9 @@ function serializationReplacer(_key: string, value: unknown): unknown {
  * Custom reviver that reconstructs BigInt and Date
  */
 function deserializationReviver(_key: string, value: unknown): unknown {
-  if (
-    value &&
-    typeof value === 'object' &&
-    '__type' in value &&
-    'value' in value
-  ) {
+  if (value && typeof value === 'object' && '__type' in value && 'value' in value) {
     const typed = value as { __type: string; value: string };
-    
+
     if (typed.__type === 'bigint') {
       return BigInt(typed.value);
     }
@@ -114,17 +114,13 @@ function deserializationReviver(_key: string, value: unknown): unknown {
 export class DomainSerializer {
   /**
    * Serializes an object to JSON string with schema versioning
-   * 
+   *
    * @param data - Object to serialize
    * @param schema - Optional Zod schema for validation before serialization
    * @param options - Serialization options
    * @returns JSON string with schema version envelope
    */
-  static serialize<T>(
-    data: T,
-    schema?: ZodSchema<T>,
-    options: SerializationOptions = {}
-  ): string {
+  static serialize<T>(data: T, schema?: ZodSchema<T>, options: SerializationOptions = {}): string {
     const {
       includeTimestamp = false,
       pretty = false,
@@ -166,7 +162,7 @@ export class DomainSerializer {
 
   /**
    * Deserializes JSON string to typed object with validation
-   * 
+   *
    * @param json - JSON string to deserialize
    * @param schema - Zod schema for validation after deserialization
    * @param options - Deserialization options
@@ -177,10 +173,7 @@ export class DomainSerializer {
     schema: ZodSchema<T>,
     options: DeserializationOptions = {}
   ): T {
-    const {
-      allowOlderVersions = true,
-      maxAge = 0,
-    } = options;
+    const { allowOlderVersions = true, maxAge = 0 } = options;
 
     try {
       // Parse JSON with custom reviver
@@ -188,17 +181,11 @@ export class DomainSerializer {
 
       // Validate envelope structure
       if (!envelope || typeof envelope !== 'object') {
-        throw new SerializationError(
-          'Invalid envelope structure',
-          'DESERIALIZATION_FAILED'
-        );
+        throw new SerializationError('Invalid envelope structure', 'DESERIALIZATION_FAILED');
       }
 
       if (typeof envelope.schemaVersion !== 'number') {
-        throw new SerializationError(
-          'Missing or invalid schemaVersion',
-          'DESERIALIZATION_FAILED'
-        );
+        throw new SerializationError('Missing or invalid schemaVersion', 'DESERIALIZATION_FAILED');
       }
 
       // Check schema version

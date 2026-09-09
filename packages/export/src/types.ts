@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- legacy explicit-any usage; remove when typed */
 import type { Currency } from '@payments-optimizer/domain';
 
 export interface StrategyExport {

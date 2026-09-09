@@ -65,7 +65,8 @@ export class SavingsCalculator {
   static calculateByMerchant(entries: SavingsEntry[]): Record<string, number> {
     const byMerchant: Record<string, bigint> = {};
     for (const entry of entries) {
-      byMerchant[entry.merchantId] = (byMerchant[entry.merchantId] || 0n) + BigInt(entry.savings.amountMinor);
+      byMerchant[entry.merchantId] =
+        (byMerchant[entry.merchantId] || 0n) + BigInt(entry.savings.amountMinor);
     }
     const result: Record<string, number> = {};
     for (const [merchantId, totalMinor] of Object.entries(byMerchant)) {
@@ -169,7 +170,10 @@ export class SavingsCalculator {
   /**
    * Calculate top benefiting strategies by total savings
    */
-  static calculateTopStrategies(entries: SavingsEntry[], limit: number = 5): Array<{
+  static calculateTopStrategies(
+    entries: SavingsEntry[],
+    limit: number = 5
+  ): Array<{
     strategyId: string;
     totalSavings: number;
     occurrenceCount: number;

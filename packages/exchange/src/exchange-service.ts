@@ -16,10 +16,19 @@ const FIXED_RATES: Record<string, number> = {
 
 // Default rates for common currencies
 const DEFAULT_RATES: Partial<Record<Currency, Partial<Record<Currency, number>>>> = {
-  INR: { USD: 0.012, EUR: 0.011, GBP: 0.0093, JPY: 1.75, SGD: 0.017, AED: 0.045, CAD: 0.016, AUD: 0.018 },
+  INR: {
+    USD: 0.012,
+    EUR: 0.011,
+    GBP: 0.0093,
+    JPY: 1.75,
+    SGD: 0.017,
+    AED: 0.045,
+    CAD: 0.016,
+    AUD: 0.018,
+  },
   USD: { INR: 83.5, EUR: 0.92, GBP: 0.79, JPY: 150.0, SGD: 1.35, AED: 3.67, CAD: 1.36, AUD: 1.52 },
   EUR: { INR: 90.0, USD: 1.09, GBP: 0.86, JPY: 163.0, SGD: 1.47, AED: 4.0, CAD: 1.48, AUD: 1.65 },
-  GBP: { INR: 107.0, USD: 1.27, EUR: 1.16, JPY: 189.0, SGD: 1.71, AED: 4.64, CAD: 1.70, AUD: 1.90 },
+  GBP: { INR: 107.0, USD: 1.27, EUR: 1.16, JPY: 189.0, SGD: 1.71, AED: 4.64, CAD: 1.7, AUD: 1.9 },
 };
 
 /**
@@ -35,7 +44,7 @@ export class ExchangeService {
    */
   async getRate(from: Currency, to: Currency): Promise<number> {
     const key = `${from}-${to}`;
-    
+
     // Check cache
     const cached = this.cache.get(key);
     if (cached && Date.now() - cached.timestamp < this.cacheTTL) {

@@ -1,9 +1,9 @@
 /**
  * Result type for type-safe error handling
- * 
+ *
  * Represents either success (Ok) or failure (Err), forcing explicit error handling
  * at compile time. Inspired by Rust's Result<T, E> type.
- * 
+ *
  * @example
  * ```typescript
  * function divide(a: number, b: number): Result<number, DivisionError> {
@@ -12,7 +12,7 @@
  *   }
  *   return ok(a / b);
  * }
- * 
+ *
  * const result = divide(10, 2);
  * if (result.isOk()) {
  *   console.log(result.value); // 5

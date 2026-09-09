@@ -1,14 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- legacy explicit-any usage; remove when typed */
 /**
  * Tests for DomainSerializer (Epic 1.3)
  */
 
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import {
-  DomainSerializer,
-  SerializationError,
-  SERIALIZATION_VERSION,
-} from './serialization.js';
+import { DomainSerializer, SerializationError, SERIALIZATION_VERSION } from './serialization.js';
 
 describe('DomainSerializer', () => {
   describe('BigInt handling', () => {
@@ -36,10 +33,7 @@ describe('DomainSerializer', () => {
           id: 'user-1',
           balance: 50000n,
         },
-        transactions: [
-          { amount: 1000n },
-          { amount: 2000n },
-        ],
+        transactions: [{ amount: 1000n }, { amount: 2000n }],
       };
 
       const schema = z.object({
@@ -116,8 +110,10 @@ describe('DomainSerializer', () => {
       const schema = z.object({ value: z.string() });
 
       // Simulate older version
-      const serialized = DomainSerializer.serialize(data, schema, { schemaVersion: SERIALIZATION_VERSION - 1 });
-      
+      const serialized = DomainSerializer.serialize(data, schema, {
+        schemaVersion: SERIALIZATION_VERSION - 1,
+      });
+
       // Should not throw
       const deserialized = DomainSerializer.deserialize(serialized, schema);
       expect(deserialized.value).toBe('test');
@@ -127,8 +123,10 @@ describe('DomainSerializer', () => {
       const data = { value: 'test' };
       const schema = z.object({ value: z.string() });
 
-      const serialized = DomainSerializer.serialize(data, schema, { schemaVersion: SERIALIZATION_VERSION - 1 });
-      
+      const serialized = DomainSerializer.serialize(data, schema, {
+        schemaVersion: SERIALIZATION_VERSION - 1,
+      });
+
       expect(() =>
         DomainSerializer.deserialize(serialized, schema, { allowOlderVersions: false })
       ).toThrow(SerializationError);
@@ -138,11 +136,11 @@ describe('DomainSerializer', () => {
       const data = { value: 'test' };
       const schema = z.object({ value: z.string() });
 
-      const serialized = DomainSerializer.serialize(data, schema, { schemaVersion: SERIALIZATION_VERSION + 1 });
-      
-      expect(() =>
-        DomainSerializer.deserialize(serialized, schema)
-      ).toThrow(SerializationError);
+      const serialized = DomainSerializer.serialize(data, schema, {
+        schemaVersion: SERIALIZATION_VERSION + 1,
+      });
+
+      expect(() => DomainSerializer.deserialize(serialized, schema)).toThrow(SerializationError);
     });
   });
 
@@ -151,9 +149,9 @@ describe('DomainSerializer', () => {
       const invalidData = { age: 'not a number' };
       const schema = z.object({ age: z.number() });
 
-      expect(() =>
-        DomainSerializer.serialize(invalidData as any, schema)
-      ).toThrow(SerializationError);
+      expect(() => DomainSerializer.serialize(invalidData as any, schema)).toThrow(
+        SerializationError
+      );
     });
 
     it('should validate after deserialization', () => {
@@ -161,13 +159,11 @@ describe('DomainSerializer', () => {
       const schema = z.object({ age: z.number() });
 
       const serialized = DomainSerializer.serialize(data, schema);
-      
+
       // Manually corrupt the data
       const corrupted = serialized.replace('"age":25', '"age":"invalid"');
-      
-      expect(() =>
-        DomainSerializer.deserialize(corrupted, schema)
-      ).toThrow(SerializationError);
+
+      expect(() => DomainSerializer.deserialize(corrupted, schema)).toThrow(SerializationError);
     });
 
     it('should provide validation error details', () => {
@@ -191,13 +187,13 @@ describe('DomainSerializer', () => {
       const schema = z.object({ value: z.string() });
 
       const serialized = DomainSerializer.serialize(data, schema, { includeTimestamp: true });
-      
+
       // Wait a bit
-      await new Promise(resolve => setTimeout(resolve, 50));
-      
-      expect(() =>
-        DomainSerializer.deserialize(serialized, schema, { maxAge: 10 })
-      ).toThrow(SerializationError);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      expect(() => DomainSerializer.deserialize(serialized, schema, { maxAge: 10 })).toThrow(
+        SerializationError
+      );
     });
 
     it('should accept recent data within maxAge', () => {
@@ -205,7 +201,7 @@ describe('DomainSerializer', () => {
       const schema = z.object({ value: z.string() });
 
       const serialized = DomainSerializer.serialize(data, schema, { includeTimestamp: true });
-      
+
       // Should not throw
       const deserialized = DomainSerializer.deserialize(serialized, schema, { maxAge: 1000 });
       expect(deserialized.value).toBe('test');
@@ -270,10 +266,10 @@ describe('DomainSerializer', () => {
   describe('Simple serialization (legacy compatibility)', () => {
     it('should serialize without envelope', () => {
       const data = { value: 'test', amount: 1000n };
-      
+
       const serialized = DomainSerializer.serializeSimple(data);
       const parsed = JSON.parse(serialized);
-      
+
       // No envelope, direct data
       expect(parsed.__type).toBeUndefined();
       expect(parsed.amount).toEqual({ __type: 'bigint', value: '1000' });
@@ -281,10 +277,10 @@ describe('DomainSerializer', () => {
 
     it('should deserialize without validation', () => {
       const data = { value: 'test', amount: 1000n };
-      
+
       const serialized = DomainSerializer.serializeSimple(data);
       const deserialized = DomainSerializer.deserializeSimple<typeof data>(serialized);
-      
+
       expect(deserialized.value).toBe('test');
       expect(deserialized.amount).toBe(1000n);
     });
@@ -307,18 +303,16 @@ describe('DomainSerializer', () => {
     it('should handle malformed JSON gracefully', () => {
       const schema = z.object({ value: z.string() });
 
-      expect(() =>
-        DomainSerializer.deserialize('{ invalid json', schema)
-      ).toThrow(SerializationError);
+      expect(() => DomainSerializer.deserialize('{ invalid json', schema)).toThrow(
+        SerializationError
+      );
     });
 
     it('should handle missing envelope fields', () => {
       const schema = z.object({ value: z.string() });
       const malformed = JSON.stringify({ data: { value: 'test' } }); // Missing schemaVersion
 
-      expect(() =>
-        DomainSerializer.deserialize(malformed, schema)
-      ).toThrow(SerializationError);
+      expect(() => DomainSerializer.deserialize(malformed, schema)).toThrow(SerializationError);
     });
   });
 
@@ -328,7 +322,7 @@ describe('DomainSerializer', () => {
       const schema = z.object({ value: z.string() });
 
       const serialized = DomainSerializer.serialize(data, schema, { pretty: true });
-      
+
       expect(serialized).toContain('\n');
       expect(serialized).toContain('  ');
     });
@@ -338,7 +332,7 @@ describe('DomainSerializer', () => {
       const schema = z.object({ value: z.string() });
 
       const serialized = DomainSerializer.serialize(data, schema, { pretty: false });
-      
+
       expect(serialized).not.toContain('\n  ');
     });
   });

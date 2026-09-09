@@ -9,7 +9,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@payments-optimizer/domain": "workspace:*"
+    "@payments-optimizer/domain": "workspace:*",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "typescript": "5.5.4",

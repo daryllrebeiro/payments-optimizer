@@ -131,9 +131,7 @@ describe('Message Schemas', () => {
           },
         ],
         subtotal: { amountMinor: '800000', currency: 'INR' },
-        discounts: [
-          { amountMinor: '50000', currency: 'INR' },
-        ],
+        discounts: [{ amountMinor: '50000', currency: 'INR' }],
         shipping: { amountMinor: '10000', currency: 'INR' },
         taxes: { amountMinor: '40000', currency: 'INR' },
         total: { amountMinor: '800000', currency: 'INR' },

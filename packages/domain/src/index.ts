@@ -15,7 +15,7 @@ export function inrToMinor(amount: number): InrMinor {
  * Converts INR amount in minor units (paise) to major units (rupees)
  */
 export function inrToMajor(amount: InrMinor | bigint): InrMajor {
-  return Number(amount) / 100 as InrMajor;
+  return (Number(amount) / 100) as InrMajor;
 }
 
 /**
@@ -29,7 +29,7 @@ export function usdToMinor(amount: number): UsdMinor {
  * Converts USD amount in minor units (cents) to major units (dollars)
  */
 export function usdToMajor(amount: UsdMinor | bigint): UsdMajor {
-  return Number(amount) / 100 as UsdMajor;
+  return (Number(amount) / 100) as UsdMajor;
 }
 
 // Core Types
@@ -473,6 +473,7 @@ export interface SavingsEntry {
 // Serialization and Message Schemas
 export * from './serialization.js';
 export * from './message-schemas.js';
+export * from './profile-schema.js';
 
 // Circuit Breaker for API resilience
 export * from './circuit-breaker.js';

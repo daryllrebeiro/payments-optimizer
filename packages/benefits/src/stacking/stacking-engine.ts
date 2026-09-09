@@ -1,5 +1,11 @@
 import { Cart, UserProfile, Money } from '@payments-optimizer/domain';
-import { zeroMoney, subtractMoney, calculateBenefit, compareMoney, addMoney } from '@payments-optimizer/rules-engine';
+import {
+  zeroMoney,
+  subtractMoney,
+  calculateBenefit,
+  compareMoney,
+  addMoney,
+} from '@payments-optimizer/rules-engine';
 import {
   UserVoucher,
   PartnerBenefit,
@@ -16,6 +22,25 @@ import { BenefitEligibilityEngine } from '../eligibility/eligibility-engine.js';
 const DEFAULT_BEAM_WIDTH = 5;
 
 /**
+ * F24 hardening: maximum vouchers in a single candidate stack.
+ * Without this cap, per-candidate arrays (vouchers, recipeSteps, cache keys)
+ * grow without bound as small vouchers accumulate against a large cart,
+ * making the beam loop superlinear with unbounded memory — a hostile profile
+ * with tens of thousands of small vouchers can freeze the process.
+ * Real checkouts never apply more than a handful of vouchers.
+ */
+const MAX_VOUCHERS_PER_STACK = 10;
+
+/**
+ * F24 hardening: memo-cache bounds. Cache keys grow linearly with stack
+ * length and the cache is never pruned, so large profiles explode memory.
+ * The memo rarely hits in this loop structure (each voucher set is reached
+ * once), so bounding it costs nothing measurable.
+ */
+const MEMO_CACHE_MAX_STACK_LENGTH = 16;
+const MEMO_CACHE_MAX_ENTRIES = 10_000;
+
+/**
  * Represents a partial voucher combination being explored.
  */
 interface BeamCandidate {
@@ -29,7 +54,7 @@ export class BenefitStackingEngine {
   private voucherManager: VoucherInventoryManager;
   private eligibilityEngine = new BenefitEligibilityEngine();
   private beamWidth: number;
-  
+
   /**
    * Memoization cache for voucher combination sub-problems.
    * Key: sorted voucher IDs joined with '|', Value: best result for that combination
@@ -57,7 +82,7 @@ export class BenefitStackingEngine {
       const bExpiry = new Date(b.expiryDate).getTime();
       const aDaysLeft = (aExpiry - now) / (24 * 60 * 60 * 1000);
       const bDaysLeft = (bExpiry - now) / (24 * 60 * 60 * 1000);
-      
+
       return aDaysLeft - bDaysLeft;
     });
   }
@@ -73,14 +98,14 @@ export class BenefitStackingEngine {
     // Add urgency bonus for vouchers expiring soon
     const now = Date.now();
     const urgencyThreshold = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
-    
+
     for (const voucher of candidate.vouchers) {
       const expiryMs = new Date(voucher.expiryDate).getTime();
       const timeLeft = expiryMs - now;
-      
+
       if (timeLeft > 0 && timeLeft <= urgencyThreshold) {
         // Urgency bonus: scale inversely with days left (max 10% of voucher value)
-        const urgencyFactor = 1 - (timeLeft / urgencyThreshold);
+        const urgencyFactor = 1 - timeLeft / urgencyThreshold;
         const bonus = Number(voucher.remainingValue.amountMinor) * 0.1 * urgencyFactor;
         score += bonus;
       }
@@ -94,13 +119,13 @@ export class BenefitStackingEngine {
    */
   private selectTopK(candidates: BeamCandidate[], k: number, cart: Cart): BeamCandidate[] {
     return candidates
-      .map(candidate => ({
+      .map((candidate) => ({
         candidate,
-        score: this.scoreCandidate(candidate, cart)
+        score: this.scoreCandidate(candidate, cart),
       }))
       .sort((a, b) => b.score - a.score)
       .slice(0, k)
-      .map(item => item.candidate);
+      .map((item) => item.candidate);
   }
 
   /**
@@ -108,7 +133,7 @@ export class BenefitStackingEngine {
    */
   private getCacheKey(vouchers: UserVoucher[]): string {
     return vouchers
-      .map(v => v.id)
+      .map((v) => v.id)
       .sort()
       .join('|');
   }
@@ -135,14 +160,16 @@ export class BenefitStackingEngine {
 
     // Beam search for larger sets
     const currency = cart.currency;
-    
+
     // Initialize beam with empty state
-    let beam: BeamCandidate[] = [{
-      vouchers: [],
-      totalSavings: zeroMoney(currency),
-      remainingCartTotal: cart.total,
-      recipeSteps: []
-    }];
+    let beam: BeamCandidate[] = [
+      {
+        vouchers: [],
+        totalSavings: zeroMoney(currency),
+        remainingCartTotal: cart.total,
+        recipeSteps: [],
+      },
+    ];
 
     // Expand beam iteratively
     for (const voucher of sortedVouchers) {
@@ -156,10 +183,17 @@ export class BenefitStackingEngine {
           continue;
         }
 
+        // F24: cap stack depth — per-candidate copy/score/cache costs grow
+        // with stack length; a cap keeps the loop linear in voucher count.
+        if (candidate.vouchers.length >= MAX_VOUCHERS_PER_STACK) {
+          newCandidates.push(candidate);
+          continue;
+        }
+
         // Check memoization cache
         const newVouchers = [...candidate.vouchers, voucher];
         const cacheKey = this.getCacheKey(newVouchers);
-        
+
         if (this.memoCache.has(cacheKey)) {
           newCandidates.push(this.memoCache.get(cacheKey)!);
           continue;
@@ -167,7 +201,7 @@ export class BenefitStackingEngine {
 
         // Try adding this voucher
         const burn = this.voucherManager.applyVoucher(voucher, candidate.remainingCartTotal);
-        
+
         if (burn.amountBurned.amountMinor > 0n) {
           const newCandidate: BeamCandidate = {
             vouchers: newVouchers,
@@ -186,12 +220,17 @@ export class BenefitStackingEngine {
                 savingsGenerated: burn.amountBurned,
                 codeToApply: voucher.code,
                 instructions: `Enter voucher code ${voucher.code || voucher.id} at checkout`,
-              }
-            ]
+              },
+            ],
           };
 
-          // Cache this result
-          this.memoCache.set(cacheKey, newCandidate);
+          // Cache this result (F24: bounded)
+          if (
+            newVouchers.length <= MEMO_CACHE_MAX_STACK_LENGTH &&
+            this.memoCache.size < MEMO_CACHE_MAX_ENTRIES
+          ) {
+            this.memoCache.set(cacheKey, newCandidate);
+          }
           newCandidates.push(newCandidate);
         }
 
@@ -210,19 +249,16 @@ export class BenefitStackingEngine {
    * Generates all voucher combinations for small sets (≤5 vouchers).
    * This ensures exactness for small problem sizes.
    */
-  private generateAllVoucherCombinations(
-    vouchers: UserVoucher[],
-    cart: Cart
-  ): BeamCandidate[] {
+  private generateAllVoucherCombinations(vouchers: UserVoucher[], cart: Cart): BeamCandidate[] {
     const currency = cart.currency;
     const results: BeamCandidate[] = [];
 
     // Generate power set (all subsets)
     const powerSetSize = 1 << vouchers.length;
-    
+
     for (let mask = 0; mask < powerSetSize; mask++) {
       const subset: UserVoucher[] = [];
-      
+
       for (let i = 0; i < vouchers.length; i++) {
         if (mask & (1 << i)) {
           subset.push(vouchers[i]!);
@@ -238,11 +274,11 @@ export class BenefitStackingEngine {
         if (remainingTotal.amountMinor <= 0n) break;
 
         const burn = this.voucherManager.applyVoucher(voucher, remainingTotal);
-        
+
         if (burn.amountBurned.amountMinor > 0n) {
           totalSavings = addMoney(totalSavings, burn.amountBurned);
           remainingTotal = burn.remainingCartTotal;
-          
+
           recipeSteps.push({
             stepNumber: recipeSteps.length + 1,
             phase: 'BEFORE_PAYMENT',
@@ -262,7 +298,7 @@ export class BenefitStackingEngine {
         vouchers: subset,
         totalSavings,
         remainingCartTotal: remainingTotal,
-        recipeSteps
+        recipeSteps,
       });
     }
 
@@ -276,7 +312,7 @@ export class BenefitStackingEngine {
   ): StackingCombinationResult[] {
     // Clear memoization cache for each new optimization run
     this.memoCache.clear();
-    
+
     const results: StackingCombinationResult[] = [];
     const currency = cart.currency;
 
@@ -296,7 +332,7 @@ export class BenefitStackingEngine {
 
     // Option B: Vouchers Only (using beam search for multiple vouchers)
     const voucherCombinations = this.findBestVoucherCombinations(eligibleVouchers, cart);
-    
+
     for (const combo of voucherCombinations) {
       // Skip the empty combination (already covered in base option)
       if (combo.vouchers.length === 0) continue;

@@ -95,6 +95,48 @@ export const OptimizePaymentMessageSchema = z.object({
 export type OptimizePaymentMessage = z.infer<typeof OptimizePaymentMessageSchema>;
 
 /**
+ * F13: schema for CONFIRM_SAVINGS — the explicit user action that is the
+ * ONLY trigger for persisting a savings entry. Money fields are integer
+ * strings; the handler enforces currency equality (F2) before any math.
+ */
+export const ConfirmSavingsMessageSchema = z.object({
+  type: z.literal('CONFIRM_SAVINGS'),
+  payload: z.object({
+    merchantId: z.string().min(1).max(200),
+    cartTotal: z.object({
+      amountMinor: z.string().regex(/^\d{1,17}$/, 'amountMinor must be an integer string'),
+      currency: z.enum(['INR', 'USD', 'EUR', 'GBP', 'JPY', 'SGD', 'AED']),
+    }),
+    strategy: z.object({
+      id: z.string().min(1).max(200),
+      immediateDiscount: SerializedMoneySchema,
+      rewardValue: SerializedMoneySchema,
+      futureBenefit: SerializedMoneySchema,
+      fees: SerializedMoneySchema,
+      effectiveCost: SerializedMoneySchema,
+      totalBenefit: SerializedMoneySchema,
+      confidence: z.number().min(0).max(1),
+      complexityScore: z.number().min(0),
+      stepDescriptions: z.array(z.string()),
+    }),
+    benefitsApplied: z.array(
+      z.object({
+        benefitId: z.string(),
+        benefitType: z.string(),
+        benefitSourceId: z.string(),
+        benefitSourceName: z.string(),
+        amountApplied: z.object({
+          amountMinor: z.string().regex(/^\d{1,17}$/),
+          currency: z.enum(['INR', 'USD', 'EUR', 'GBP', 'JPY', 'SGD', 'AED']),
+        }),
+      })
+    ),
+  }),
+});
+
+export type ConfirmSavingsMessage = z.infer<typeof ConfirmSavingsMessageSchema>;
+
+/**
  * Schema for optimization result
  */
 export const OptimizationResultSchema = z.object({
@@ -125,7 +167,10 @@ export type OptimizePaymentErrorResponse = z.infer<typeof OptimizePaymentErrorRe
 /**
  * Union of all message types
  */
-export const ContentToBackgroundMessageSchema = OptimizePaymentMessageSchema;
+export const ContentToBackgroundMessageSchema = z.union([
+  OptimizePaymentMessageSchema,
+  ConfirmSavingsMessageSchema,
+]);
 export const BackgroundToContentMessageSchema = z.union([
   OptimizePaymentResponseSchema,
   OptimizePaymentErrorResponseSchema,
@@ -137,15 +182,25 @@ export type BackgroundToContentMessage = z.infer<typeof BackgroundToContentMessa
 /**
  * Validation helpers
  */
+export function validateMessage(message: unknown): ContentToBackgroundMessage {
+  return ContentToBackgroundMessageSchema.parse(message);
+}
+
 export function validateOptimizePaymentMessage(message: unknown): OptimizePaymentMessage {
   return OptimizePaymentMessageSchema.parse(message);
+}
+
+export function validateConfirmSavingsMessage(message: unknown): ConfirmSavingsMessage {
+  return ConfirmSavingsMessageSchema.parse(message);
 }
 
 export function validateOptimizePaymentResponse(response: unknown): OptimizePaymentResponse {
   return OptimizePaymentResponseSchema.parse(response);
 }
 
-export function validateOptimizePaymentErrorResponse(response: unknown): OptimizePaymentErrorResponse {
+export function validateOptimizePaymentErrorResponse(
+  response: unknown
+): OptimizePaymentErrorResponse {
   return OptimizePaymentErrorResponseSchema.parse(response);
 }
 

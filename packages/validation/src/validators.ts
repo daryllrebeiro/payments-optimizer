@@ -5,7 +5,17 @@ import { ok, err, type ValidateResult } from './result';
 // Extend Currency type to include additional currencies
 type ExtendedCurrency = 'INR' | 'USD' | 'EUR' | 'GBP' | 'JPY' | 'SGD' | 'AED' | 'CAD' | 'AUD';
 
-const CURRENCIES: ExtendedCurrency[] = ['INR', 'USD', 'EUR', 'GBP', 'JPY', 'SGD', 'AED', 'CAD', 'AUD'];
+const CURRENCIES: ExtendedCurrency[] = [
+  'INR',
+  'USD',
+  'EUR',
+  'GBP',
+  'JPY',
+  'SGD',
+  'AED',
+  'CAD',
+  'AUD',
+];
 
 /**
  * Validate money object
@@ -23,14 +33,18 @@ export function validateMoney(amount: unknown): ValidateResult<Money, Validation
   if (money.amountMinor === undefined) {
     summary.add(new ValidationError('amountMinor is required', 'amountMinor'));
   } else if (typeof money.amountMinor !== 'bigint' && typeof money.amountMinor !== 'string') {
-    summary.add(new ValidationError('amountMinor must be bigint or string', 'amountMinor', money.amountMinor));
+    summary.add(
+      new ValidationError('amountMinor must be bigint or string', 'amountMinor', money.amountMinor)
+    );
   }
 
   // Validate currency
   if (money.currency === undefined) {
     summary.add(new ValidationError('currency is required', 'currency'));
   } else if (!CURRENCIES.includes(money.currency as Currency)) {
-    summary.add(new ValidationError(`Invalid currency: ${money.currency}`, 'currency', money.currency));
+    summary.add(
+      new ValidationError(`Invalid currency: ${money.currency}`, 'currency', money.currency)
+    );
   }
 
   if (summary.hasErrors()) {
@@ -38,7 +52,8 @@ export function validateMoney(amount: unknown): ValidateResult<Money, Validation
   }
 
   const validated: Money = {
-    amountMinor: typeof money.amountMinor === 'bigint' ? money.amountMinor : BigInt(Number(money.amountMinor)),
+    amountMinor:
+      typeof money.amountMinor === 'bigint' ? money.amountMinor : BigInt(Number(money.amountMinor)),
     currency: money.currency as Currency,
   };
 
@@ -48,7 +63,9 @@ export function validateMoney(amount: unknown): ValidateResult<Money, Validation
 /**
  * Validate currency string
  */
-export function validateCurrency(currency: unknown): ValidateResult<ExtendedCurrency, ValidationError> {
+export function validateCurrency(
+  currency: unknown
+): ValidateResult<ExtendedCurrency, ValidationError> {
   if (typeof currency !== 'string') {
     return err(new ValidationError('Currency must be a string', 'currency', currency));
   }
@@ -84,7 +101,9 @@ export function validateExpiryDate(dateStr: unknown): ValidateResult<string, Val
 
   // Validate ISO 8601 format
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?$/.test(trimmed)) {
-    return err(new ValidationError('Expiry date must be in ISO 8601 format', 'expiryDate', dateStr));
+    return err(
+      new ValidationError('Expiry date must be in ISO 8601 format', 'expiryDate', dateStr)
+    );
   }
 
   return ok(dateStr);

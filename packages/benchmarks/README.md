@@ -25,13 +25,17 @@ import { BenchmarkHarness } from '@payments-optimizer/benchmarks';
 
 const harness = new BenchmarkHarness();
 
-await harness.benchmark('My Algorithm', () => {
-  // Your code here
-}, {
-  iterations: 1000,
-  warmupIterations: 100,
-  measureMemory: true
-});
+await harness.benchmark(
+  'My Algorithm',
+  () => {
+    // Your code here
+  },
+  {
+    iterations: 1000,
+    warmupIterations: 100,
+    measureMemory: true,
+  }
+);
 
 harness.printResults();
 ```
@@ -39,16 +43,19 @@ harness.printResults();
 ## Benchmark Scenarios
 
 ### BenefitOptimizer
+
 - **Small**: 2 cards, 5 offers
 - **Medium**: 5 cards, 15 offers
 - **Large**: 10 cards, 30 offers
 
 ### RulesEngine
+
 - **Simple**: 2 basic rules
 - **Medium**: 10 mixed rules
 - **Complex**: 50 nested conditional rules
 
 ### OfferEngine
+
 - **Small**: 5 offers
 - **Medium**: 15 offers
 - **Large**: 50 offers
@@ -56,6 +63,7 @@ harness.printResults();
 ## Output
 
 The benchmarks output:
+
 - Total execution time
 - Average time per iteration
 - Min/Max times

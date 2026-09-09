@@ -34,7 +34,7 @@ export const zalandoCart: Cart = {
   subtotal: createMoneyEUR(239.98),
   discounts: [],
   shipping: createMoneyEUR(0), // Free shipping
-  taxes: createMoneyEUR(45.60), // 19% VAT
+  taxes: createMoneyEUR(45.6), // 19% VAT
   total: createMoneyEUR(285.58),
   currency: 'EUR',
 };
@@ -45,23 +45,23 @@ export const mediaMarktCart: Cart = {
     {
       id: 'eur-electronics-1',
       name: 'Smart TV 55"',
-      price: createMoneyEUR(599.00),
+      price: createMoneyEUR(599.0),
       quantity: 1,
       category: 'ELECTRONICS',
     },
     {
       id: 'eur-electronics-2',
       name: 'Soundbar',
-      price: createMoneyEUR(199.00),
+      price: createMoneyEUR(199.0),
       quantity: 1,
       category: 'ELECTRONICS',
     },
   ],
-  subtotal: createMoneyEUR(798.00),
+  subtotal: createMoneyEUR(798.0),
   discounts: [],
-  shipping: createMoneyEUR(29.90),
-  taxes: createMoneyEUR(157.30),
-  total: createMoneyEUR(985.20),
+  shipping: createMoneyEUR(29.9),
+  taxes: createMoneyEUR(157.3),
+  total: createMoneyEUR(985.2),
   currency: 'EUR',
 };
 
@@ -71,23 +71,23 @@ export const carrefourCart: Cart = {
     {
       id: 'eur-grocery-1',
       name: 'Fresh Produce',
-      price: createMoneyEUR(25.50),
+      price: createMoneyEUR(25.5),
       quantity: 1,
       category: 'GROCERIES',
     },
     {
       id: 'eur-grocery-2',
       name: 'Wine Selection',
-      price: createMoneyEUR(45.00),
+      price: createMoneyEUR(45.0),
       quantity: 2,
       category: 'BEVERAGES',
     },
   ],
-  subtotal: createMoneyEUR(115.50),
+  subtotal: createMoneyEUR(115.5),
   discounts: [],
   shipping: createMoneyEUR(0),
   taxes: createMoneyEUR(0), // Already included
-  total: createMoneyEUR(115.50),
+  total: createMoneyEUR(115.5),
   currency: 'EUR',
 };
 
@@ -123,7 +123,7 @@ export const n26Card: CreditCard = {
   productName: 'N26 You',
   network: 'MASTERCARD',
   rewardProgram: 'N26 Rewards',
-  annualFee: createMoneyEUR(118.80), // €9.90/month
+  annualFee: createMoneyEUR(118.8), // €9.90/month
   rewardRules: [
     {
       id: 'n26-travel',
@@ -156,7 +156,7 @@ export const bnpParibasCard: CreditCard = {
   productName: 'Premium Visa',
   network: 'VISA',
   rewardProgram: 'BNP Points',
-  annualFee: createMoneyEUR(150.00),
+  annualFee: createMoneyEUR(150.0),
   rewardRules: [
     {
       id: 'bnp-premium-rewards',
@@ -230,7 +230,7 @@ export const mediaMarktVISAOffer: Offer = {
   ],
   benefit: {
     type: 'PERCENTAGE_DISCOUNT',
-    value: 0.10,
+    value: 0.1,
     cap: createMoneyEUR(100),
   },
   paymentRequirements: [

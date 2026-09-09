@@ -1,7 +1,7 @@
 /**
  * Circuit Breaker Pattern Implementation
  * Epic 1.5: Prevents cascading failures from external API timeouts
- * 
+ *
  * States:
  * - CLOSED: Normal operation, requests pass through
  * - OPEN: Failure threshold exceeded, requests fail fast
@@ -144,9 +144,7 @@ export class CircuitBreaker {
     this.consecutiveFailures = 0;
     this.consecutiveSuccesses = 0;
     this.nextAttemptTime = undefined;
-    console.log(
-      `[CircuitBreaker:${this.config.name}] Transitioned to CLOSED (healthy)`
-    );
+    console.log(`[CircuitBreaker:${this.config.name}] Transitioned to CLOSED (healthy)`);
   }
 
   /**

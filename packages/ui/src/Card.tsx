@@ -7,16 +7,9 @@ export interface CardProps {
   subtitle?: string;
 }
 
-export const Card: React.FC<CardProps> = ({
-  children,
-  className = '',
-  title,
-  subtitle,
-}) => {
+export const Card: React.FC<CardProps> = ({ children, className = '', title, subtitle }) => {
   return (
-    <div
-      className={`rounded-xl border border-gray-200 bg-white p-6 shadow-sm ${className}`}
-    >
+    <div className={`rounded-xl border border-gray-200 bg-white p-6 shadow-sm ${className}`}>
       {(title || subtitle) && (
         <div className="mb-4">
           {title && <h3 className="text-lg font-semibold text-gray-900">{title}</h3>}

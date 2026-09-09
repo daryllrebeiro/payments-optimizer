@@ -1,7 +1,7 @@
 /**
  * Structured Logger with Privacy-First Design
  * Epic 1.9: Observability with structured logging and telemetry
- * 
+ *
  * Features:
  * - Structured JSON logging
  * - Automatic PII/redacted data filtering
@@ -29,12 +29,12 @@ export enum LogLevel {
  * Log entry interface for structured logging
  */
 export interface LogEntry {
-  timestamp: string;        // ISO 8601 timestamp
-  level: LogLevel;         // Log level
-  message: string;         // Human-readable message
+  timestamp: string; // ISO 8601 timestamp
+  level: LogLevel; // Log level
+  message: string; // Human-readable message
   context: Record<string, unknown>; // Additional context data
-  correlationId?: string;  // Request/session correlation ID
-  error?: ErrorInfo;       // Error details if applicable
+  correlationId?: string; // Request/session correlation ID
+  error?: ErrorInfo; // Error details if applicable
   metadata?: Record<string, unknown>; // Application-specific metadata
 }
 
@@ -203,11 +203,7 @@ export class Logger {
   /**
    * Log a Result (for success/failure tracking)
    */
-  logResult<T, E>(
-    result: Result<T, E>,
-    message: string,
-    context?: Record<string, unknown>
-  ): void {
+  logResult<T, E>(result: Result<T, E>, message: string, context?: Record<string, unknown>): void {
     if (result.isOk()) {
       this.info(`${message}: Success`, { ...context, result: 'ok' });
     } else {
@@ -230,7 +226,7 @@ export class Logger {
   ): Promise<T> {
     const startTime = this.clock.now();
     this.debug(`Starting: ${name}`, context);
-    
+
     try {
       const result = await fn();
       const duration = this.clock.now() - startTime;
@@ -293,22 +289,18 @@ export class Logger {
     if (this.config.format === 'json') {
       return JSON.stringify(entry);
     }
-    
+
     // Human-readable format
-    const parts: string[] = [
-      entry.timestamp,
-      `[${entry.level}]`,
-      entry.message,
-    ];
-    
+    const parts: string[] = [entry.timestamp, `[${entry.level}]`, entry.message];
+
     if (entry.context && Object.keys(entry.context).length > 0) {
       parts.push(this.formatContext(entry.context));
     }
-    
+
     if (entry.correlationId) {
       parts.push(`[correlation:${entry.correlationId}]`);
     }
-    
+
     return parts.join(' ');
   }
 
@@ -319,12 +311,12 @@ export class Logger {
     if (depth > this.config.maxDepth!) {
       return '[max depth reached]';
     }
-    
+
     const entries = Object.entries(context).map(([key, value]) => {
       const formattedValue = this.formatValue(value, depth + 1);
       return `${key}=${formattedValue}`;
     });
-    
+
     return `{${entries.join(', ')}}`;
   }
 
@@ -334,23 +326,23 @@ export class Logger {
   private formatValue(value: unknown, depth: number): string {
     if (value === null) return 'null';
     if (value === undefined) return 'undefined';
-    
+
     if (typeof value === 'string') {
       return `"${value}"`;
     }
-    
+
     if (typeof value === 'number' || typeof value === 'bigint' || typeof value === 'boolean') {
       return String(value);
     }
-    
+
     if (Array.isArray(value)) {
       return `[${value.map((v) => this.formatValue(v, depth)).join(', ')}]`;
     }
-    
+
     if (typeof value === 'object') {
       return this.formatContext(value as Record<string, unknown>, depth);
     }
-    
+
     return String(value);
   }
 
@@ -361,15 +353,15 @@ export class Logger {
     if (depth > this.config.maxDepth!) {
       return { '[max depth]': true };
     }
-    
+
     const redacted: Record<string, unknown> = {};
-    
+
     for (const [key, value] of Object.entries(obj)) {
       const lowerKey = key.toLowerCase();
-      const shouldRedact = this.config.redactPaths!.some((path) => 
+      const shouldRedact = this.config.redactPaths!.some((path) =>
         lowerKey.includes(path.toLowerCase())
       );
-      
+
       if (shouldRedact) {
         redacted[key] = '[REDACTED]';
       } else if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
@@ -378,7 +370,7 @@ export class Logger {
         redacted[key] = value;
       }
     }
-    
+
     return redacted;
   }
 

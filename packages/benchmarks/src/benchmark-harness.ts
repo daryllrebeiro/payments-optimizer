@@ -30,11 +30,7 @@ export class BenchmarkHarness {
     fn: () => T | Promise<T>,
     options: BenchmarkOptions = {}
   ): Promise<BenchmarkResult> {
-    const {
-      iterations = 1000,
-      warmupIterations = 100,
-      measureMemory = true,
-    } = options;
+    const { iterations = 1000, warmupIterations = 100, measureMemory = true } = options;
 
     // Warmup phase
     for (let i = 0; i < warmupIterations; i++) {
@@ -128,17 +124,18 @@ export class BenchmarkHarness {
    */
   compareWithBaseline(baseline: BenchmarkResult[], threshold = 0.1): void {
     console.log('\n=== Regression Analysis ===\n');
-    
+
     for (const current of this.results) {
-      const baselineResult = baseline.find(b => b.name === current.name);
+      const baselineResult = baseline.find((b) => b.name === current.name);
       if (!baselineResult) {
         console.log(`${current.name}: NO BASELINE`);
         continue;
       }
 
       const speedup = baselineResult.avgTimeMs / current.avgTimeMs;
-      const percentChange = ((current.avgTimeMs - baselineResult.avgTimeMs) / baselineResult.avgTimeMs) * 100;
-      
+      const percentChange =
+        ((current.avgTimeMs - baselineResult.avgTimeMs) / baselineResult.avgTimeMs) * 100;
+
       let status = '✓ OK';
       if (percentChange > threshold * 100) {
         status = '⚠ REGRESSION';
@@ -149,7 +146,9 @@ export class BenchmarkHarness {
       console.log(`${current.name}: ${status}`);
       console.log(`  Baseline: ${baselineResult.avgTimeMs.toFixed(4)}ms`);
       console.log(`  Current:  ${current.avgTimeMs.toFixed(4)}ms`);
-      console.log(`  Change:   ${percentChange >= 0 ? '+' : ''}${percentChange.toFixed(2)}% (${speedup.toFixed(2)}x)`);
+      console.log(
+        `  Change:   ${percentChange >= 0 ? '+' : ''}${percentChange.toFixed(2)}% (${speedup.toFixed(2)}x)`
+      );
       console.log('');
     }
   }

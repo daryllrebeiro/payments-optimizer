@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- legacy explicit-any usage; remove when typed */
 import type { StrategyExport } from './types';
 import type { PaymentStrategy, Currency } from '@payments-optimizer/domain';
 
@@ -66,7 +67,11 @@ export function exportStrategy(strategy: PaymentStrategy, merchantId: string): s
 /**
  * Export multiple strategies to CSV format
  */
-export function exportToCSV(strategies: PaymentStrategy[], merchantId: string, currency: Currency): string {
+export function exportToCSV(
+  strategies: PaymentStrategy[],
+  merchantId: string,
+  currency: Currency
+): string {
   const headers = [
     'Strategy ID',
     'Immediate Discount',
@@ -105,7 +110,11 @@ export function exportToCSV(strategies: PaymentStrategy[], merchantId: string, c
  * Export strategies to Excel (.xlsx) format
  * Note: For production, use 'xlsx' library for .xlsx export
  */
-export function exportToExcel(strategies: PaymentStrategy[], merchantId: string, currency: Currency): string {
+export function exportToExcel(
+  strategies: PaymentStrategy[],
+  merchantId: string,
+  currency: Currency
+): string {
   // For now, return CSV - actual .xlsx would require xlsx library
   // This is a placeholder for Excel export
   return exportToCSV(strategies, merchantId, currency);

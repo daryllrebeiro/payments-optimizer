@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- legacy explicit-any usage; remove when typed */
 /**
  * Tests for Offer API Client with Circuit Breaker
  * Epic 1.5: Verify circuit breaker integration and fallback behavior
@@ -169,7 +170,7 @@ describe('OfferApiClient', () => {
     it('should fail fast when circuit is open', async () => {
       // Open the circuit
       (global.fetch as any).mockRejectedValue(new Error('API down'));
-      
+
       await client.getOffers('amazon');
       await client.getOffers('amazon');
       await client.getOffers('amazon');
@@ -185,7 +186,7 @@ describe('OfferApiClient', () => {
 
       expect(offers).toEqual([]);
       expect(fetchCallsAfter).toBe(fetchCallsBefore); // No new fetch call
-      
+
       // Check that request was rejected
       health = client.getHealthStatus();
       expect(health.rejectedRequests).toBe(1);
@@ -194,7 +195,7 @@ describe('OfferApiClient', () => {
     it('should transition to half-open after timeout', async () => {
       // Open the circuit
       (global.fetch as any).mockRejectedValue(new Error('API down'));
-      
+
       await client.getOffers('amazon');
       await client.getOffers('amazon');
       await client.getOffers('amazon');
@@ -220,7 +221,7 @@ describe('OfferApiClient', () => {
     it('should close circuit after success threshold in half-open', async () => {
       // Open the circuit
       (global.fetch as any).mockRejectedValue(new Error('API down'));
-      
+
       await client.getOffers('amazon');
       await client.getOffers('amazon');
       await client.getOffers('amazon');
@@ -245,7 +246,7 @@ describe('OfferApiClient', () => {
     it('should reopen circuit on failure in half-open', async () => {
       // Open the circuit
       (global.fetch as any).mockRejectedValue(new Error('API down'));
-      
+
       await client.getOffers('amazon');
       await client.getOffers('amazon');
       await client.getOffers('amazon');

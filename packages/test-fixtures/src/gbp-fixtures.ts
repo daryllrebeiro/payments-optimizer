@@ -19,16 +19,16 @@ export const tescoCart: Cart = {
     {
       id: 'gbp-grocery-1',
       name: 'Weekly Groceries',
-      price: createMoneyGBP(85.50),
+      price: createMoneyGBP(85.5),
       quantity: 1,
       category: 'GROCERIES',
     },
   ],
-  subtotal: createMoneyGBP(85.50),
+  subtotal: createMoneyGBP(85.5),
   discounts: [],
   shipping: createMoneyGBP(0),
   taxes: createMoneyGBP(0), // VAT included
-  total: createMoneyGBP(85.50),
+  total: createMoneyGBP(85.5),
   currency: 'GBP',
 };
 
@@ -64,22 +64,22 @@ export const marksAndSpencerCart: Cart = {
     {
       id: 'gbp-clothing-1',
       name: 'Formal Suit',
-      price: createMoneyGBP(249.00),
+      price: createMoneyGBP(249.0),
       quantity: 1,
       category: 'APPAREL',
     },
     {
       id: 'gbp-clothing-2',
       name: 'Dress Shoes',
-      price: createMoneyGBP(89.00),
+      price: createMoneyGBP(89.0),
       quantity: 1,
       category: 'APPAREL',
     },
   ],
-  subtotal: createMoneyGBP(338.00),
+  subtotal: createMoneyGBP(338.0),
   discounts: [],
   shipping: createMoneyGBP(3.99),
-  taxes: createMoneyGBP(68.40),
+  taxes: createMoneyGBP(68.4),
   total: createMoneyGBP(410.39),
   currency: 'GBP',
 };
@@ -105,7 +105,7 @@ export const argosCart: Cart = {
   subtotal: createMoneyGBP(189.98),
   discounts: [],
   shipping: createMoneyGBP(0), // Free shipping
-  taxes: createMoneyGBP(38.00),
+  taxes: createMoneyGBP(38.0),
   total: createMoneyGBP(227.98),
   currency: 'GBP',
 };
@@ -118,7 +118,7 @@ export const amexPlatinumUK: CreditCard = {
   productName: 'Platinum Card',
   network: 'AMEX',
   rewardProgram: 'Membership Rewards',
-  annualFee: createMoneyGBP(575.00),
+  annualFee: createMoneyGBP(575.0),
   rewardRules: [
     {
       id: 'amex-platinum-travel',
@@ -192,7 +192,7 @@ export const hsbcPremierCard: CreditCard = {
   productName: 'Premier World Elite Mastercard',
   network: 'MASTERCARD',
   rewardProgram: 'HSBC Rewards',
-  annualFee: createMoneyGBP(195.00),
+  annualFee: createMoneyGBP(195.0),
   rewardRules: [
     {
       id: 'hsbc-premier-rewards',
@@ -260,7 +260,7 @@ export const tescoClubcardOffer: Offer = {
   ],
   benefit: {
     type: 'PERCENTAGE_DISCOUNT',
-    value: 0.10,
+    value: 0.1,
     cap: createMoneyGBP(20),
   },
   paymentRequirements: [],
@@ -359,7 +359,7 @@ export const amazonUKPrimeDay: Offer = {
   ],
   benefit: {
     type: 'PERCENTAGE_DISCOUNT',
-    value: 0.20,
+    value: 0.2,
     cap: createMoneyGBP(100),
   },
   paymentRequirements: [],
