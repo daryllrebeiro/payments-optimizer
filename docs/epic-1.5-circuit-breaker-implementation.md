@@ -13,6 +13,7 @@ Implemented a circuit breaker pattern to protect against cascading failures when
 ### Core Components
 
 #### 1. CircuitBreaker (`packages/domain/src/circuit-breaker.ts`)
+
 - **Three States:** CLOSED (normal), OPEN (failing fast), HALF_OPEN (testing recovery)
 - **State Transitions:**
   - CLOSED → OPEN: After `failureThreshold` consecutive failures
@@ -30,6 +31,7 @@ Implemented a circuit breaker pattern to protect against cascading failures when
   - Generic type support for any async operation
 
 #### 2. OfferApiClient (`packages/domain/src/offer-api-client.ts`)
+
 - **Wraps Fetch API:** Integrates circuit breaker with HTTP requests
 - **Timeout Support:** Configurable request timeout with AbortController
 - **Retry Logic:** Configurable retry attempts with exponential backoff
@@ -58,6 +60,7 @@ Implemented a circuit breaker pattern to protect against cascading failures when
 ## Test Coverage
 
 ### CircuitBreaker Tests (25 passing)
+
 - State transitions (CLOSED → OPEN → HALF_OPEN → CLOSED)
 - Failure threshold enforcement
 - Success threshold in half-open state
@@ -68,6 +71,7 @@ Implemented a circuit breaker pattern to protect against cascading failures when
 - Error propagation during execution
 
 ### OfferApiClient Tests (16 passing, 1 skipped)
+
 - Successful requests (fetch all, fetch by ID, search with params)
 - Error handling (HTTP errors, network errors, 404s)
 - Circuit breaker integration (failure tracking, fail-fast, recovery)

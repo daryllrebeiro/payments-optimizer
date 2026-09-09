@@ -22,14 +22,16 @@ Core type definitions and domain models.
 #### Key Types
 
 **Money**
+
 ```typescript
 interface Money {
-  amountMinor: bigint;  // Amount in smallest currency unit (e.g., cents)
-  currency: Currency;    // 'INR' | 'USD' | 'EUR' | 'GBP' | etc.
+  amountMinor: bigint; // Amount in smallest currency unit (e.g., cents)
+  currency: Currency; // 'INR' | 'USD' | 'EUR' | 'GBP' | etc.
 }
 ```
 
 **Cart**
+
 ```typescript
 interface Cart {
   merchantId: string;
@@ -44,6 +46,7 @@ interface Cart {
 ```
 
 **UserProfile**
+
 ```typescript
 interface UserProfile {
   version: number;
@@ -69,11 +72,13 @@ Main optimization engine and benefit calculation.
 The core optimizer that combines all benefit types.
 
 **Constructor**
+
 ```typescript
 constructor(catalog?: PublicBenefitCatalog)
 ```
 
 **optimize()**
+
 ```typescript
 optimize(
   cart: Cart,
@@ -86,6 +91,7 @@ optimize(
 Returns array of strategies sorted by opportunity score (best first).
 
 **Example Usage**
+
 ```typescript
 import { UnifiedBenefitOptimizer } from '@payments-optimizer/benefits';
 
@@ -98,12 +104,13 @@ console.log(`Total benefit: $${best.totalBenefit.amountMinor / 100n}`);
 console.log(`Opportunity score: ${best.opportunityScore}`);
 
 // Recipe steps to follow
-best.recipeSteps.forEach(step => {
+best.recipeSteps.forEach((step) => {
   console.log(`${step.stepNumber}. ${step.description}`);
 });
 ```
 
 **Strategy Properties**
+
 ```typescript
 interface UnifiedTransactionStrategy {
   id: string;
@@ -138,32 +145,30 @@ Eligibility checking and benefit calculation logic.
 Checks if a cart meets eligibility conditions.
 
 ```typescript
-function checkEligibility(
-  cart: Cart,
-  conditions: RuleCondition[],
-  contextDate?: string
-): boolean
+function checkEligibility(cart: Cart, conditions: RuleCondition[], contextDate?: string): boolean;
 ```
 
 **Supported Conditions:**
+
 - `MINIMUM_SPEND`: Cart subtotal must meet minimum
 - `MERCHANT_ELIGIBILITY`: Merchant must be in allowed list
 - `MCC_ELIGIBILITY`: Items must be in allowed categories
 - `EXPIRY`: Offer must not be expired
 
 **Example**
+
 ```typescript
 import { checkEligibility } from '@payments-optimizer/rules-engine';
 
 const conditions: RuleCondition[] = [
-  { 
-    type: 'MINIMUM_SPEND', 
-    value: { amountMinor: 5000n, currency: 'USD' } 
+  {
+    type: 'MINIMUM_SPEND',
+    value: { amountMinor: 5000n, currency: 'USD' },
   },
-  { 
-    type: 'MERCHANT_ELIGIBILITY', 
-    value: ['amazon', 'ebay'] 
-  }
+  {
+    type: 'MERCHANT_ELIGIBILITY',
+    value: ['amazon', 'ebay'],
+  },
 ];
 
 if (checkEligibility(cart, conditions)) {
@@ -176,26 +181,25 @@ if (checkEligibility(cart, conditions)) {
 Calculates monetary value of a benefit.
 
 ```typescript
-function calculateBenefit(
-  cart: Cart,
-  benefit: OfferBenefit
-): Money
+function calculateBenefit(cart: Cart, benefit: OfferBenefit): Money;
 ```
 
 **Supported Benefit Types:**
+
 - `PERCENTAGE_DISCOUNT`: Percentage off with optional cap
 - `FIXED_DISCOUNT`: Fixed amount off
 - `CASHBACK`: Cashback percentage with optional cap
 - `POINTS`: Points value with optional cap
 
 **Example**
+
 ```typescript
 import { calculateBenefit } from '@payments-optimizer/rules-engine';
 
 const benefit: OfferBenefit = {
   type: 'PERCENTAGE_DISCOUNT',
-  value: 0.10,  // 10%
-  cap: { amountMinor: 5000n, currency: 'USD' }  // Max $50
+  value: 0.1, // 10%
+  cap: { amountMinor: 5000n, currency: 'USD' }, // Max $50
 };
 
 const savings = calculateBenefit(cart, benefit);
@@ -211,7 +215,7 @@ function evaluateCardReward(
   rule: RewardRule,
   exclusions?: string[],
   currentSpentInPeriod?: Money
-): Money
+): Money;
 ```
 
 ---
@@ -231,26 +235,27 @@ Main storage interface.
 ```typescript
 class StorageRepository {
   // Card Management
-  async saveCard(card: CreditCard): Promise<void>
-  async getCard(id: string): Promise<CreditCard | undefined>
-  async getAllCards(): Promise<CreditCard[]>
-  async deleteCard(id: string): Promise<void>
-  
+  async saveCard(card: CreditCard): Promise<void>;
+  async getCard(id: string): Promise<CreditCard | undefined>;
+  async getAllCards(): Promise<CreditCard[]>;
+  async deleteCard(id: string): Promise<void>;
+
   // Offer Management
-  async saveOffer(offer: Offer): Promise<void>
-  async getOffer(id: string): Promise<Offer | undefined>
-  async getOffersByMerchant(merchantId: string): Promise<Offer[]>
-  async deleteOffer(id: string): Promise<void>
-  
+  async saveOffer(offer: Offer): Promise<void>;
+  async getOffer(id: string): Promise<Offer | undefined>;
+  async getOffersByMerchant(merchantId: string): Promise<Offer[]>;
+  async deleteOffer(id: string): Promise<void>;
+
   // Coupon Management
-  async saveCoupon(coupon: Coupon): Promise<void>
-  async getCoupon(id: string): Promise<Coupon | undefined>
-  async getAllCoupons(): Promise<Coupon[]>
-  async deleteCoupon(id: string): Promise<void>
+  async saveCoupon(coupon: Coupon): Promise<void>;
+  async getCoupon(id: string): Promise<Coupon | undefined>;
+  async getAllCoupons(): Promise<Coupon[]>;
+  async deleteCoupon(id: string): Promise<void>;
 }
 ```
 
 **Example Usage**
+
 ```typescript
 import { StorageRepository } from '@payments-optimizer/storage';
 
@@ -280,12 +285,12 @@ Manages user profiles in IndexedDB.
 
 ```typescript
 class ProfileManager {
-  async createProfile(profile: UserProfile): Promise<void>
-  async getProfile(): Promise<UserProfile | null>
-  async saveProfile(profile: UserProfile): Promise<void>
-  async addPaymentMethod(method: PaymentMethod): Promise<void>
-  async addMembership(membership: UserMembership): Promise<void>
-  async addVoucher(voucher: UserVoucher): Promise<void>
+  async createProfile(profile: UserProfile): Promise<void>;
+  async getProfile(): Promise<UserProfile | null>;
+  async saveProfile(profile: UserProfile): Promise<void>;
+  async addPaymentMethod(method: PaymentMethod): Promise<void>;
+  async addMembership(membership: UserMembership): Promise<void>;
+  async addVoucher(voucher: UserVoucher): Promise<void>;
 }
 ```
 
@@ -295,33 +300,22 @@ Import/export profiles with optional encryption.
 
 ```typescript
 class ProfileImportExport {
-  static async exportProfile(
-    profile: UserProfile,
-    passphrase?: string
-  ): Promise<string>
-  
-  static async importProfile(
-    json: string,
-    passphrase?: string
-  ): Promise<UserProfile>
+  static async exportProfile(profile: UserProfile, passphrase?: string): Promise<string>;
+
+  static async importProfile(json: string, passphrase?: string): Promise<UserProfile>;
 }
 ```
 
 **Example**
+
 ```typescript
 import { ProfileImportExport } from '@payments-optimizer/profile';
 
 // Export with encryption
-const encrypted = await ProfileImportExport.exportProfile(
-  profile,
-  'my-secure-password'
-);
+const encrypted = await ProfileImportExport.exportProfile(profile, 'my-secure-password');
 
 // Import encrypted profile
-const imported = await ProfileImportExport.importProfile(
-  encrypted,
-  'my-secure-password'
-);
+const imported = await ProfileImportExport.importProfile(encrypted, 'my-secure-password');
 ```
 
 ---
@@ -347,7 +341,7 @@ interface CreditCard {
   id: string;
   issuer: string;
   productName: string;
-  network: CardNetwork;  // 'VISA' | 'MASTERCARD' | 'AMEX' | 'RUPAY'
+  network: CardNetwork; // 'VISA' | 'MASTERCARD' | 'AMEX' | 'RUPAY'
   rewardProgram: string;
   annualFee: Money;
   rewardRules: RewardRule[];
@@ -363,7 +357,7 @@ interface CreditCard {
 interface RewardRule {
   id: string;
   rewardType: 'CASHBACK' | 'POINTS' | 'MILES';
-  rate: Decimal;  // Percentage as decimal (0.05 = 5%)
+  rate: Decimal; // Percentage as decimal (0.05 = 5%)
   category?: string[];
   merchantIds?: string[];
   maximumReward?: Money;
@@ -392,8 +386,8 @@ interface Offer {
   merchantId: string;
   title: string;
   description?: string;
-  validFrom: string;  // ISO 8601 date
-  validUntil: string;  // ISO 8601 date
+  validFrom: string; // ISO 8601 date
+  validUntil: string; // ISO 8601 date
   conditions: RuleCondition[];
   benefit: OfferBenefit;
   paymentRequirements?: PaymentRequirement[];
@@ -407,12 +401,12 @@ interface Offer {
 
 ```typescript
 interface OptimizationPreferences {
-  immediateSavingsWeight: Decimal;  // 0.0 to 1.0
-  rewardValueWeight: Decimal;       // 0.0 to 1.0
-  milestoneWeight: Decimal;         // 0.0 to 1.0
-  simplicityWeight: Decimal;        // 0.0 to 1.0
-  riskWeight: Decimal;              // 0.0 to 1.0
-  urgencyWeight?: Decimal;          // 0.0 to 1.0
+  immediateSavingsWeight: Decimal; // 0.0 to 1.0
+  rewardValueWeight: Decimal; // 0.0 to 1.0
+  milestoneWeight: Decimal; // 0.0 to 1.0
+  simplicityWeight: Decimal; // 0.0 to 1.0
+  riskWeight: Decimal; // 0.0 to 1.0
+  urgencyWeight?: Decimal; // 0.0 to 1.0
 }
 ```
 
@@ -427,14 +421,14 @@ Always use BigInt for amounts to avoid floating-point precision issues:
 ```typescript
 // ✅ Correct
 const amount: Money = {
-  amountMinor: 12345n,  // $123.45
-  currency: 'USD'
+  amountMinor: 12345n, // $123.45
+  currency: 'USD',
 };
 
 // ❌ Wrong
 const amount = {
-  amountMinor: 123.45,  // Will cause type error
-  currency: 'USD'
+  amountMinor: 123.45, // Will cause type error
+  currency: 'USD',
 };
 ```
 
@@ -470,7 +464,7 @@ try {
 import {
   amazonCart,
   hdfcMillenniaCard,
-  hdfcInstantDiscountOffer
+  hdfcInstantDiscountOffer,
 } from '@payments-optimizer/test-fixtures';
 
 // Use pre-built test data
@@ -489,6 +483,7 @@ const strategies = optimizer.optimize(amazonCart, {
 ### Upgrading from v0.6.0 to v0.7.0
 
 **Breaking Changes:**
+
 - `BenefitOptimizer` renamed to `UnifiedBenefitOptimizer`
 - `OptimizationPreferences` now uses numeric weights instead of boolean flags
 - `UserVoucher` structure changed (removed `programId`, added `merchantId` and `title`)
@@ -500,7 +495,7 @@ const strategies = optimizer.optimize(amazonCart, {
 const preferences = {
   prioritizeCash: true,
   minimizeSteps: false,
-  riskTolerance: 'MEDIUM'
+  riskTolerance: 'MEDIUM',
 };
 
 // v0.7.0
@@ -509,7 +504,7 @@ const preferences = {
   rewardValueWeight: 0.3,
   milestoneWeight: 0.1,
   simplicityWeight: 0.1,
-  riskWeight: 0.1
+  riskWeight: 0.1,
 };
 ```
 
@@ -518,6 +513,7 @@ const preferences = {
 ## Support
 
 For issues, questions, or feature requests:
+
 - GitHub Issues: https://github.com/daryllrebeiro/payments-optimizer/issues
 - Documentation: See `/docs` folder in repository
 - Examples: See `/packages/*/src/*.spec.ts` for usage examples

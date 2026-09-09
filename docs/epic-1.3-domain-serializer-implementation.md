@@ -11,6 +11,7 @@ Implemented schema-versioned serialization with Zod validation for type-safe mes
 ## Problem Statement
 
 The previous implementation (`apps/extension/src/types/messages.ts`) had several issues:
+
 - Hand-rolled BigInt→string conversion with no schema versioning
 - No runtime validation - malformed messages could crash the extension
 - Service worker directly imported `@payments-optimizer/test-fixtures` for default profiles
@@ -87,6 +88,7 @@ Message Schemas (Zod)
 ### Serialization Format
 
 **Versioned Envelope**:
+
 ```json
 {
   "schemaVersion": 1,
@@ -100,6 +102,7 @@ Message Schemas (Zod)
 ```
 
 **Simple Format** (legacy compatibility):
+
 ```json
 {
   "amount": { "__type": "bigint", "value": "123456" },
@@ -113,21 +116,13 @@ Message Schemas (Zod)
 
 ```typescript
 class DomainSerializer {
-  static serialize<T>(
-    data: T,
-    schema?: ZodSchema<T>,
-    options?: SerializationOptions
-  ): string
+  static serialize<T>(data: T, schema?: ZodSchema<T>, options?: SerializationOptions): string;
 
-  static deserialize<T>(
-    json: string,
-    schema: ZodSchema<T>,
-    options?: DeserializationOptions
-  ): T
+  static deserialize<T>(json: string, schema: ZodSchema<T>, options?: DeserializationOptions): T;
 
   // Legacy compatibility
-  static serializeSimple<T>(data: T): string
-  static deserializeSimple<T>(json: string): T
+  static serializeSimple<T>(data: T): string;
+  static deserializeSimple<T>(json: string): T;
 }
 ```
 
@@ -135,12 +130,13 @@ class DomainSerializer {
 
 ```typescript
 class SerializationError extends Error {
-  code: 'SERIALIZATION_FAILED' 
-      | 'DESERIALIZATION_FAILED' 
-      | 'VALIDATION_FAILED' 
-      | 'VERSION_MISMATCH' 
-      | 'EXPIRED'
-  details?: unknown
+  code:
+    | 'SERIALIZATION_FAILED'
+    | 'DESERIALIZATION_FAILED'
+    | 'VALIDATION_FAILED'
+    | 'VERSION_MISMATCH'
+    | 'EXPIRED';
+  details?: unknown;
 }
 ```
 
@@ -156,6 +152,7 @@ All message types now have corresponding Zod schemas:
 - `OptimizePaymentErrorResponseSchema` - Background → Content error
 
 **Validation Helpers**:
+
 ```typescript
 validateCart(unknown): SerializedCart
 validateStrategy(unknown): SerializedStrategy
@@ -167,13 +164,16 @@ validateOptimizePaymentMessage(unknown): OptimizePaymentMessage
 ### Serializer Tests (21 tests, all passing)
 
 **BigInt Handling** (2 tests):
+
 - Serialize/deserialize BigInt values
 - Handle nested BigInt in arrays and objects
 
 **Date Handling** (1 test):
+
 - Serialize/deserialize Date objects with full fidelity
 
 **Schema Versioning** (5 tests):
+
 - Include version in envelope
 - Include optional timestamp
 - Allow older versions by default
@@ -181,54 +181,65 @@ validateOptimizePaymentMessage(unknown): OptimizePaymentMessage
 - Reject future versions always
 
 **Validation** (3 tests):
+
 - Validate before serialization
-- Validate after deserialization  
+- Validate after deserialization
 - Provide detailed error information
 
 **Timestamp Validation** (2 tests):
+
 - Reject expired data beyond maxAge
 - Accept recent data within maxAge
 
 **Complex Objects** (1 test):
+
 - Handle deeply nested structures with BigInt and Date
 
 **Legacy Compatibility** (2 tests):
+
 - Simple serialization without envelope
 - Simple deserialization without validation
 
 **Error Handling** (3 tests):
+
 - Proper error codes and messages
 - Malformed JSON handling
 - Missing envelope fields detection
 
 **Pretty Printing** (2 tests):
+
 - Format with indentation
 - Compact format
 
 ### Schema Tests (18 tests, all passing)
 
 **Money Schema** (4 tests):
+
 - Valid money objects
 - Reject non-string amountMinor
 - Reject invalid currency
 - Accept negative values
 
 **Cart Schema** (4 tests):
+
 - Valid complete cart
 - Reject empty merchantId
 - Reject empty items array
 - Reject zero quantity items
 
 **Strategy Schema** (2 tests):
+
 - Valid complete strategy
 - Reject invalid confidence (>1 or <0)
 
 **Message Schemas** (3 tests):
+
 - Valid OPTIMIZE_PAYMENT message
 - Reject wrong message type
 - Reject empty cartJson
 
 **Response Schemas** (5 tests):
+
 - Valid success response
 - Valid response with strategies
 - Valid error response
@@ -300,20 +311,17 @@ const restored = DomainSerializer.deserialize(json, UserSchema, {
 ### Message Validation
 
 ```typescript
-import {
-  validateOptimizePaymentMessage,
-  validateCart,
-} from '@payments-optimizer/domain';
+import { validateOptimizePaymentMessage, validateCart } from '@payments-optimizer/domain';
 
 // In service worker message handler
 chrome.runtime.onMessage.addListener((rawMessage, sender, sendResponse) => {
   try {
     // Validate message structure
     const message = validateOptimizePaymentMessage(rawMessage);
-    
+
     // Parse and validate cart
     const cart = validateCart(JSON.parse(message.payload.cartJson));
-    
+
     // Process valid cart...
   } catch (error) {
     if (error instanceof SerializationError) {
@@ -341,7 +349,7 @@ const restored = DomainSerializer.deserializeSimple<{ amount: bigint }>(simple);
 ✅ **Maintainability**: Clear migration path for schema changes  
 ✅ **Debuggability**: Detailed error messages with context  
 ✅ **Performance**: Minimal overhead (<1ms for typical messages)  
-✅ **Currency Safety**: Maintains BigInt precision (Global Constraint #2)  
+✅ **Currency Safety**: Maintains BigInt precision (Global Constraint #2)
 
 ## Integration Plan (Future Work)
 
@@ -379,7 +387,7 @@ The domain serializer is complete and ready for integration. Next steps:
 ✅ **Type Safety**: Runtime checks prevent type confusion attacks  
 ✅ **Version Control**: Future versions rejected, preventing downgrade attacks  
 ✅ **Injection Prevention**: Strict schema prevents malicious payloads  
-✅ **Error Handling**: No sensitive data leaked in error messages  
+✅ **Error Handling**: No sensitive data leaked in error messages
 
 ## Related Files
 
@@ -393,6 +401,7 @@ The domain serializer is complete and ready for integration. Next steps:
 ## Next Steps
 
 Epic 1.3 is complete. Ready to proceed to:
+
 - **Epic 1.4**: IndexedDB Indexes for Savings History
 - **Service Worker Integration**: Wire serializer into message handling (post-Phase 1)
 

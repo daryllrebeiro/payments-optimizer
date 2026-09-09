@@ -11,7 +11,8 @@ Replaced the O(2^n) voucher combination generation in `BenefitStackingEngine` wi
 ## Problem Statement
 
 The previous implementation only considered single vouchers. For users with many vouchers (20+), generating all possible combinations would require O(2^n) operations, resulting in:
-- >2 seconds for 20 vouchers (>1M combinations)
+
+- > 2 seconds for 20 vouchers (>1M combinations)
 - Unacceptable latency for real-time optimization
 - Poor user experience
 
@@ -67,14 +68,14 @@ interface BeamCandidate {
 
 ### Benchmark Results (100 iterations)
 
-| Scenario | Avg Time | Max Time | vs. Target |
-|----------|----------|----------|------------|
-| 5 vouchers (exact) | 0.11ms | 0.69ms | ✓ Well under |
-| 10 vouchers | 0.54ms | 1.65ms | ✓ Well under |
+| Scenario                  | Avg Time   | Max Time   | vs. Target                   |
+| ------------------------- | ---------- | ---------- | ---------------------------- |
+| 5 vouchers (exact)        | 0.11ms     | 0.69ms     | ✓ Well under                 |
+| 10 vouchers               | 0.54ms     | 1.65ms     | ✓ Well under                 |
 | **20 vouchers (default)** | **0.58ms** | **2.34ms** | **✓ 42x faster than target** |
-| 20 vouchers (narrow beam) | 0.29ms | 1.39ms | ✓ Extra fast |
-| 20 vouchers (wide beam) | 1.34ms | 3.02ms | ✓ Still excellent |
-| 50 vouchers | 1.10ms | 3.14ms | ✓ Exceeds expectations |
+| 20 vouchers (narrow beam) | 0.29ms     | 1.39ms     | ✓ Extra fast                 |
+| 20 vouchers (wide beam)   | 1.34ms     | 3.02ms     | ✓ Still excellent            |
+| 50 vouchers               | 1.10ms     | 3.14ms     | ✓ Exceeds expectations       |
 
 **Success Criteria**: P95 < 100ms for 20 vouchers  
 **Actual Result**: Even worst case (max time) is **2.34ms** - **42× faster** than required!
@@ -136,6 +137,7 @@ All well within acceptable limits for client-side execution.
 ✅ **All existing tests pass without modification**
 
 The implementation maintains full backward compatibility:
+
 - Single-voucher scenarios work identically
 - Multi-voucher combinations added as new functionality
 - API remains unchanged (beamWidth is optional parameter)
@@ -150,7 +152,7 @@ const combos = engine.generateStackingCombinations(cart, profile, partnerBenefit
 
 // Custom beam width for specific needs
 const narrowEngine = new BenefitStackingEngine(userVouchers, 2); // Faster
-const wideEngine = new BenefitStackingEngine(userVouchers, 10);  // More exploration
+const wideEngine = new BenefitStackingEngine(userVouchers, 10); // More exploration
 ```
 
 ## Future Optimization Opportunities
@@ -180,6 +182,7 @@ node packages/benchmarks/dist/run-stacking-bench.js
 ## Next Steps
 
 Epic 1.1 is complete. Ready to proceed to:
+
 - **Epic 1.2**: Transaction Coordinator for Atomic Voucher Burn
 - **Epic 1.3**: Domain Serializer for Message Passing
 

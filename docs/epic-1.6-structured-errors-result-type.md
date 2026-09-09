@@ -13,6 +13,7 @@ Implemented a comprehensive type-safe error handling system with `Result<T, E>` 
 ### Core Components
 
 #### 1. Result<T, E> Type (`packages/domain/src/result.ts`)
+
 - **Variants:** `Ok<T, E>` for success, `Err<T, E>` for failure
 - **Inspired By:** Rust's `Result` type, functional programming patterns
 - **Type Safety:** Forces explicit error handling at compile time
@@ -27,6 +28,7 @@ Implemented a comprehensive type-safe error handling system with `Result<T, E>` 
   - `toPromise()`: Convert to Promise for async boundaries
 
 #### 2. Helper Functions
+
 - **`ok(value)`**: Create success Result
 - **`err(error)`**: Create failure Result
 - **`tryCatch(fn, mapError)`**: Wrap throwing functions
@@ -37,6 +39,7 @@ Implemented a comprehensive type-safe error handling system with `Result<T, E>` 
 #### 3. Structured Error Classes (`packages/domain/src/errors.ts`)
 
 All errors extend `DomainError` base class with:
+
 - **Unique error code** for programmatic handling
 - **Contextual data** for debugging and logging
 - **Type safety** for exhaustive error matching
@@ -44,25 +47,26 @@ All errors extend `DomainError` base class with:
 
 **Error Hierarchy:**
 
-| Error Class | Code | Use Case |
-|------------|------|----------|
-| `ValidationError` | `VALIDATION_ERROR` | Input validation failures |
-| `NotFoundError` | `NOT_FOUND` | Resource doesn't exist |
-| `InsufficientResourceError` | `INSUFFICIENT_RESOURCE` | Not enough quota/balance |
-| `TimeoutError` | `TIMEOUT` | Operation exceeded time limit |
-| `NetworkError` | `NETWORK_ERROR` | HTTP/network failures |
-| `CircuitBreakerOpenError` | `CIRCUIT_BREAKER_OPEN` | Service temporarily unavailable |
-| `SerializationError` | `SERIALIZATION_ERROR` | Ser/deser failures |
-| `StorageError` | `STORAGE_ERROR` | IndexedDB operation failures |
-| `TransactionError` | `TRANSACTION_ERROR` | Multi-step operation failures |
-| `MigrationError` | `MIGRATION_ERROR` | Database migration failures |
-| `ConfigurationError` | `CONFIGURATION_ERROR` | Invalid configuration |
-| `AuthorizationError` | `AUTHORIZATION_ERROR` | Permission denied |
-| `BusinessLogicError` | `BUSINESS_LOGIC_ERROR` | Business rule violations |
-| `ConflictError` | `CONFLICT` | Resource conflict/duplicate |
-| `RateLimitError` | `RATE_LIMIT_EXCEEDED` | Too many requests |
+| Error Class                 | Code                    | Use Case                        |
+| --------------------------- | ----------------------- | ------------------------------- |
+| `ValidationError`           | `VALIDATION_ERROR`      | Input validation failures       |
+| `NotFoundError`             | `NOT_FOUND`             | Resource doesn't exist          |
+| `InsufficientResourceError` | `INSUFFICIENT_RESOURCE` | Not enough quota/balance        |
+| `TimeoutError`              | `TIMEOUT`               | Operation exceeded time limit   |
+| `NetworkError`              | `NETWORK_ERROR`         | HTTP/network failures           |
+| `CircuitBreakerOpenError`   | `CIRCUIT_BREAKER_OPEN`  | Service temporarily unavailable |
+| `SerializationError`        | `SERIALIZATION_ERROR`   | Ser/deser failures              |
+| `StorageError`              | `STORAGE_ERROR`         | IndexedDB operation failures    |
+| `TransactionError`          | `TRANSACTION_ERROR`     | Multi-step operation failures   |
+| `MigrationError`            | `MIGRATION_ERROR`       | Database migration failures     |
+| `ConfigurationError`        | `CONFIGURATION_ERROR`   | Invalid configuration           |
+| `AuthorizationError`        | `AUTHORIZATION_ERROR`   | Permission denied               |
+| `BusinessLogicError`        | `BUSINESS_LOGIC_ERROR`  | Business rule violations        |
+| `ConflictError`             | `CONFLICT`              | Resource conflict/duplicate     |
+| `RateLimitError`            | `RATE_LIMIT_EXCEEDED`   | Too many requests               |
 
 #### 4. Type Guards
+
 - Each error class has a corresponding type guard (e.g., `isValidationError()`)
 - Enables exhaustive error handling with TypeScript discriminated unions
 - Safe downcasting for error-specific context
@@ -132,9 +136,7 @@ function formatUser(user: User): Result<string, never> {
 }
 
 // Chain operations - short-circuits on first error
-const result = validateId(123)
-  .andThen(fetchUser)
-  .andThen(formatUser);
+const result = validateId(123).andThen(fetchUser).andThen(formatUser);
 
 // Pattern matching for exhaustive handling
 const output = result.match({
@@ -164,11 +166,7 @@ import { tryCatch, toDomainError } from '@payments-optimizer/domain';
 
 const result = tryCatch(
   () => JSON.parse(input),
-  (error) => new SerializationError(
-    'Failed to parse JSON',
-    'deserialize',
-    'unknown'
-  )
+  (error) => new SerializationError('Failed to parse JSON', 'deserialize', 'unknown')
 );
 ```
 
@@ -180,12 +178,14 @@ import { InsufficientResourceError } from '@payments-optimizer/domain';
 function burnVoucher(id: string, amount: bigint): Result<void, InsufficientResourceError> {
   const balance = getBalance(id);
   if (balance < amount) {
-    return err(new InsufficientResourceError(
-      'Insufficient voucher balance',
-      'VoucherBalance',
-      amount,      // required
-      balance      // available
-    ));
+    return err(
+      new InsufficientResourceError(
+        'Insufficient voucher balance',
+        'VoucherBalance',
+        amount, // required
+        balance // available
+      )
+    );
   }
   // ... burn voucher
   return ok(undefined);
@@ -205,23 +205,27 @@ if (result.isErr()) {
 ## Migration Path
 
 ### Phase 1: Core Infrastructure (✅ Complete)
+
 - Result<T, E> type and helpers
 - Structured error classes
 - CircuitBreaker updated to use structured errors
 - Comprehensive test coverage
 
 ### Phase 2: Storage Layer (Future)
+
 - Update `StorageRepository` to return Result
 - Update `TransactionCoordinator` to return Result
 - Update `MigrationRunner` to return Result
 - Migrate operations (BurnVoucher, SaveSavings, UpdateProfile)
 
 ### Phase 3: Domain Layer (Future)
+
 - Update `DomainSerializer` to return Result
 - Update validation functions to return Result
 - Update message schema validation
 
 ### Phase 4: Benefits Layer (Future)
+
 - Update optimizer to return Result
 - Update benefit catalog to return Result
 - Update stacking engine to return Result
@@ -229,6 +233,7 @@ if (result.isErr()) {
 ## Test Coverage
 
 ### Result Tests (39 passing)
+
 - Ok/Err variant creation and type guards
 - unwrap/unwrapOr behavior
 - map/mapErr transformations
@@ -242,6 +247,7 @@ if (result.isErr()) {
 - toDomainError conversion
 
 ### Error Tests (30 passing)
+
 - All 15 structured error classes
 - Field validation and context preservation
 - Error code enum completeness
@@ -286,7 +292,7 @@ if (result.isErr()) {
 ✅ **Testability**: Errors are data, easy to test and assert on  
 ✅ **Composability**: Railway-oriented programming for clean error propagation  
 ✅ **Consistency**: All errors follow same shape, unified logging/telemetry  
-✅ **Developer Experience**: IDE autocomplete, exhaustive matching, compile-time safety  
+✅ **Developer Experience**: IDE autocomplete, exhaustive matching, compile-time safety
 
 ## Future Enhancements
 

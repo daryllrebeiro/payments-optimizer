@@ -5,10 +5,12 @@ Get started with Payment Optimizer in 5 minutes.
 ## Installation
 
 ### Prerequisites
+
 - Node.js 18+ and pnpm 8+
 - Chrome/Edge browser (Chromium-based)
 
 ### Setup
+
 ```bash
 # Clone repository
 git clone https://github.com/daryllrebeiro/payments-optimizer.git
@@ -25,6 +27,7 @@ pnpm test
 ```
 
 ### Load Extension
+
 1. Open Chrome and go to `chrome://extensions/`
 2. Enable "Developer mode" (toggle in top-right)
 3. Click "Load unpacked"
@@ -64,6 +67,7 @@ Click the extension icon → **Settings** → **Profile**
 ### 3. Apply Recommendations
 
 Follow the recipe steps shown:
+
 ```
 1. Apply coupon code: SAVE1000
 2. Add gift card: ₹5,000
@@ -90,21 +94,19 @@ const optimizer = new UnifiedBenefitOptimizer();
 const profile = {
   version: 1,
   currency: 'INR',
-  paymentMethods: [
-    { type: 'CREDIT_CARD', card: hdfcMillenniaCard }
-  ],
+  paymentMethods: [{ type: 'CREDIT_CARD', card: hdfcMillenniaCard }],
   rewardPreferences: {
     defaultValuations: {
-      'HDFC Millennia Points': { amountMinor: 50n, currency: 'INR' }
-    }
+      'HDFC Millennia Points': { amountMinor: 50n, currency: 'INR' },
+    },
   },
   optimizationPreferences: {
     immediateSavingsWeight: 0.4,
     rewardValueWeight: 0.3,
     milestoneWeight: 0.1,
     simplicityWeight: 0.1,
-    riskWeight: 0.1
-  }
+    riskWeight: 0.1,
+  },
 };
 
 // Optimize
@@ -145,10 +147,10 @@ const offers = await storage.getOffersByMerchant('amazon');
 import { checkEligibility } from '@payments-optimizer/rules-engine';
 
 const conditions = [
-  { 
-    type: 'MINIMUM_SPEND', 
-    value: { amountMinor: 5000n, currency: 'USD' } 
-  }
+  {
+    type: 'MINIMUM_SPEND',
+    value: { amountMinor: 5000n, currency: 'USD' },
+  },
 ];
 
 if (checkEligibility(cart, conditions)) {
@@ -161,30 +163,33 @@ if (checkEligibility(cart, conditions)) {
 ## Testing
 
 ### Run All Tests
+
 ```bash
 pnpm test
 ```
 
 ### Run Specific Package Tests
+
 ```bash
 pnpm --filter @payments-optimizer/benefits test
 ```
 
 ### Using Test Fixtures
+
 ```typescript
 import {
   // INR fixtures
   amazonCart,
   hdfcMillenniaCard,
-  
+
   // USD fixtures
   amazonCartUSD,
   chaseSapphireCard,
-  
+
   // Edge cases
   emptyCart,
   expiredCard,
-  highValueCart
+  highValueCart,
 } from '@payments-optimizer/test-fixtures';
 
 describe('My Test', () => {
@@ -215,19 +220,21 @@ await manager.addPaymentMethod({
     network: 'VISA',
     rewardProgram: 'Rewards Program',
     annualFee: { amountMinor: 0n, currency: 'USD' },
-    rewardRules: [{
-      id: 'rule-1',
-      rewardType: 'CASHBACK',
-      rate: 0.02,  // 2%
-      period: 'MONTHLY'
-    }],
+    rewardRules: [
+      {
+        id: 'rule-1',
+        rewardType: 'CASHBACK',
+        rate: 0.02, // 2%
+        period: 'MONTHLY',
+      },
+    ],
     userState: {
       isAvailable: true,
       currentStatementSpend: { amountMinor: 0n, currency: 'USD' },
       annualSpendToDate: { amountMinor: 0n, currency: 'USD' },
-      monthlySpendToDate: { amountMinor: 0n, currency: 'USD' }
-    }
-  }
+      monthlySpendToDate: { amountMinor: 0n, currency: 'USD' },
+    },
+  },
 });
 ```
 
@@ -237,10 +244,7 @@ await manager.addPaymentMethod({
 import { ProfileImportExport } from '@payments-optimizer/profile';
 
 // Export with encryption
-const encrypted = await ProfileImportExport.exportProfile(
-  profile,
-  'my-password'
-);
+const encrypted = await ProfileImportExport.exportProfile(profile, 'my-password');
 
 // Save to file
 const blob = new Blob([encrypted], { type: 'application/json' });
@@ -248,10 +252,7 @@ const url = URL.createObjectURL(blob);
 // Download via <a> tag
 
 // Import
-const imported = await ProfileImportExport.importProfile(
-  encryptedData,
-  'my-password'
-);
+const imported = await ProfileImportExport.importProfile(encryptedData, 'my-password');
 ```
 
 ### Add Custom Merchant Adapter
@@ -263,19 +264,19 @@ class MyStoreAdapter implements MerchantAdapter {
   canHandle(context: PageContext): boolean {
     return context.url.includes('mystore.com');
   }
-  
+
   detectMerchant(context: PageContext) {
     return {
       merchantId: 'mystore',
       confidence: 1.0
     };
   }
-  
+
   async extractCart(context: PageContext): Promise<Cart> {
     // Parse DOM to extract cart
     const total = document.querySelector('.cart-total')?.textContent;
     // ... extract items
-    
+
     return {
       merchantId: 'mystore',
       items: [...],
@@ -283,7 +284,7 @@ class MyStoreAdapter implements MerchantAdapter {
       currency: 'USD'
     };
   }
-  
+
   async extractProduct(context: PageContext) {
     // Extract product details
   }
@@ -298,6 +299,7 @@ registry.register('mystore.com', new MyStoreAdapter());
 ## Performance Tips
 
 ### 1. Minimize Storage Operations
+
 ```typescript
 // ❌ Bad: Multiple queries
 for (const id of cardIds) {
@@ -306,15 +308,17 @@ for (const id of cardIds) {
 
 // ✅ Good: Batch query
 const allCards = await storage.getAllCards();
-const selectedCards = allCards.filter(c => cardIds.includes(c.id));
+const selectedCards = allCards.filter((c) => cardIds.includes(c.id));
 ```
 
 ### 2. Use Benchmarks
+
 ```bash
 pnpm --filter @payments-optimizer/benchmarks bench
 ```
 
 ### 3. Profile Memory
+
 ```typescript
 // Enable garbage collection
 node --expose-gc dist/run-benchmarks.js
@@ -325,16 +329,19 @@ node --expose-gc dist/run-benchmarks.js
 ## Troubleshooting
 
 ### Extension Not Loading
+
 1. Check `chrome://extensions/` for errors
 2. Verify `manifest.json` is in dist folder
 3. Rebuild: `pnpm build`
 
 ### Tests Failing
+
 1. Clean build: `rm -rf node_modules && pnpm install`
 2. Rebuild packages: `pnpm build`
 3. Check for TypeScript errors: `pnpm tsc --noEmit`
 
 ### Performance Issues
+
 1. Check bundle size: `pnpm build` (look for output sizes)
 2. Run benchmarks: `pnpm --filter @payments-optimizer/benchmarks bench`
 3. Profile with Chrome DevTools

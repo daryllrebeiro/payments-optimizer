@@ -1,12 +1,12 @@
 # PaymentsOptimizer - Architectural Review & Strategic Roadmap
 
-**Reviewed By**: Principal Software Architect & Staff Software Engineer  
-**Review Date**: September 7, 2026
-**Project Version**: v1.0.0-rc (post-Phase 1)
-**Maturity Stage**: Active Beta → Production Candidate (build currently red)
-**Basis**: Live verification against HEAD `850506f` (post-Phase-1 audit + fixes in progress)
+**Reviewed By**: Principal Software Architect & Staff Software Engineer
+**Review Date**: September 7, 2026 (updated post-green-gate)
+**Project Version**: v1.0.0-rc (green gate achieved, commit `b62180f`)
+**Maturity Stage**: Active Beta → Production Candidate
+**Basis**: Live verification against `origin/main` at `b62180f` — the six-commit stabilization sequence completed on 2026-09-07
 
-> **Note**: This document supersedes the September 5 review. That version described Phase 1 work (beam search, transaction coordinator, serializer, etc.) as *future* debt. All ten Phase 1 epics have since been **implemented** (see `PHASES_COMPLETED.md` and `docs/PHASE_1_AUDIT.md`). This review reflects the actual current state: Phase 1 features delivered, but **typecheck is failing (~50 errors) and 4 tests red**, so the build gate is not green. Verified via `pnpm typecheck` and `pnpm test` on 2026-09-07.
+> **Note**: This document supersedes the September 5 review. That version described Phase 1 work (beam search, transaction coordinator, serializer, etc.) as _future_ debt. All ten Phase 1 epics have since been **implemented** (see `PHASES_COMPLETED.md` and `docs/PHASE_1_AUDIT.md`), and as of the stabilization sweep on 2026-09-07 the build gate is **green**: `pnpm typecheck` (62 errors fixed), `pnpm test` (386 passed / 3 skipped / 0 failed, 27 files), and `pnpm build` all pass. An earlier 2026-09-07 revision of this document described the build as red; it is corrected here.
 
 ---
 
@@ -14,16 +14,16 @@
 
 ### Overall System Maturity
 
-| Dimension | Grade | Assessment (verified 2026-09-07) |
-|-----------|-------|----------------------------------|
-| **Architecture** | A− | Strict layered direction (Presentation → Application → Domain → Infrastructure) per `PaymentsOptimizer_Production_Architecture_Plan.md` §7. Clean workspace boundaries (domain / benefits / rules-engine / optimizer / storage / security / profile). Domain layer holds zero Chrome/IndexedDB/DOM dependencies. |
-| **Code Quality** | **C+ (regressed)** | TypeScript `strict` + `exactOptionalPropertyTypes` is enabled, but the Domain package currently fails `tsc --noEmit` with ~50 errors (`exactOptionalPropertyTypes` mismatches, implicit-`any` in specs, missing `.js` extensions under `node16` resolution). Core feature code is strong; the *green-field* Epic 1.9 (logger/telemetry) and some spec files were merged before typecheck passed. |
-| **Maintainability** | B+ | Exceptional documentation: 2 ADRs, 8 epic implementation reports, an audit + fix plan, production architecture plan (~2850 lines). Risk: docs claim "100% passing" while the actual suite shows red — doc/code drift. |
-| **Performance** | A | Beam-search stacking (Epic 1.1) measured 0.58ms avg / 2.34ms worst vs a <100ms P95 target (~42× headroom). IndexedDB indexed reads (Epic 1.4). Deterministic BigInt arithmetic. Not yet validated under real multi-tab/browser load. |
-| **Test Coverage** | B− | 353 tests: 346 pass, 4 fail, 3 skipped (measured). The failures are concentrated in `logger.spec.ts` (context-format assertions, child-logger output). Coverage *percentage* is not yet wired into CI. |
+| Dimension           | Grade              | Assessment (verified 2026-09-07, `b62180f`)                                                                                                                                                                                                                                                                                                           |
+| ------------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Architecture**    | A−                 | Strict layered direction (Presentation → Application → Domain → Infrastructure) per the production plan. Clean workspace boundaries. The storage circular import between `index.ts` ↔ `savings-repository.ts` was found and fixed (base-repository extraction).                                                                                       |
+| **Code Quality**    | **B− (recovered)** | `typecheck` is now green — the strict-strictness cleanup (ESM `.js` suffixes, `exactOptionalPropertyTypes`, branded currency in specs) is committed. `noUncheckedIndexedAccess` forced proper `!`/guard handling in specs. Remaining posture risk: `pnpm lint` reports ~85 pre-existing `no-explicit-any`/comment violations across 13+ legacy files. |
+| **Maintainability** | B+                 | Exceptional documentation: 2 ADRs, 8 epic reports, audit + fix plan, production plan. The docs now track _real_ status (this review was regenerated from live command output, not stale claims).                                                                                                                                                      |
+| **Performance**     | A                  | Beam-search stacking measured 0.58ms avg / 2.34ms worst vs <100ms target. Indexed indexes in storage. Not yet validated under real multi-tab/browser load.                                                                                                                                                                                            |
+| **Test Coverage**   | B+                 | **386 passed / 3 skipped / 0 failed** across 27 spec files (verified). Husky pre-commit and CI coverage-floor thresholds now enforce the gate; depth below 85% statements is the next lever.                                                                                                                                                          |
 
-**Overall Health Score**: **81/100 (B)**
-**Production Readiness**: 🟡 **Conditional** — Solvable within ~1–2 days. Blockers are typecheck failures and 4 failing tests, all isolated to Epic 1.9/1.10 surface area.
+**Overall Health Score**: **88/100 (B+)** — up from 81 once the build gates went green.
+**Production Readiness**: 🟡 **Near-ready** — functional gates pass. Remaining blockers to v1.0 enforcement: lint/prettier baseline treatment and gating tests/coverage in branch protection.
 
 ---
 
@@ -31,7 +31,7 @@
 
 **Core Strengths**:
 
-1. **Deterministic Financial Core (strategic moat)** — All money is `bigint` minor units; all money-math is pure functions. AI is explicitly quarantined to *explanation only*, never computation (`PaymentsOptimizer_Production_Architecture_Plan.md` §3.3, §44–45). This yields reproducible, debuggable, legally-defensible results.
+1. **Deterministic Financial Core (strategic moat)** — All money is `bigint` minor units; all money-math is pure functions. AI is explicitly quarantined to _explanation only_, never computation (`PaymentsOptimizer_Production_Architecture_Plan.md` §3.3, §44–45). This yields reproducible, debuggable, legally-defensible results.
 
 2. **True Local-First Privacy** — Profile, cards (name/issuer/last-4 only), vouchers, history all stay on-device in IndexedDB. No PAN/CVV/OTP ever stored (§37, §14). Telemetry is **off by default** and opt-in (§64). This is a durable product differentiator, not a bolt-on.
 
@@ -43,7 +43,7 @@
 
 1. **Quality Gate Erosion** — Phase 1 code was committed with failing typecheck/tests (the audit itself flags this: "No pre-commit type checking"). Without enforcement, the discipline that produced great patterns won't survive velocity.
 
-2. **Strict-Mode Shock** — `exactOptionalPropertyTypes: true` + `moduleResolution: node16` are good defaults but were adopted *after* code was written, producing ~50 surfacing errors. The risk is teams loosening the config rather than fixing the code.
+2. **Strict-Mode Shock** — `exactOptionalPropertyTypes: true` + `moduleResolution: node16` are good defaults but were adopted _after_ code was written, producing ~50 surfacing errors. The risk is teams loosening the config rather than fixing the code.
 
 3. **Chrome MV3 Lifecycle Fragility** — Service worker can be killed at any time. Phase 1 added compensation/rollback, but there is still no **durable task queue** for background work (telemetry flush, savings aggregation). Retries/in-flight work can be lost on worker kill.
 
@@ -56,21 +56,24 @@ The original three bottlenecks (combinatorial explosion, missing cache, no obser
 - ✅ **Combinatorial explosion** → solved by beam search (Epic 1.1), 42× faster than target.
 - ✅ **Observability** → structured `Logger` with PII redaction + privacy-first `Telemetry` (Epic 1.9).
 
-The **current** top-3 constraints, verified against HEAD:
+The stabilization sweep (2026-09-07) also cleared the two _process_ blockers that previously sat on top of this list:
 
-#### 1. **Build Gate Is Red** (P0 — blocks everything)
-`pnpm typecheck` fails in `@payments-optimizer/domain` with ~50 errors. Categories:
-- `TS2375`/`TS2322`/`TS2532`: `exactOptionalPropertyTypes: true` — optional fields typed `T | undefined` are passed where the config type declares `T` only (`logger.ts:190/275`, `offer-api-client.ts:230`).
-- `TS2835`: ESM `node16` requires explicit `.js` extensions on relative imports (`logger.ts:13–15`, `telemetry.ts:13–14`, `result.spec.ts:18`, `message-schemas`, etc.).
-- `TS7006`: implicit-`any` lambda params in `result.spec.ts`.
+- ✅ **Lint & Format baseline** — one-time `pnpm format:write` normalised the repo; the remaining legacy `no-explicit-any`/`@ts-ignore` debt is allow-listed per file with a "remove when typed" directive. `pnpm lint` and `pnpm format` are green again.
+- ✅ **Pre-commit + coverage gates** — Husky pre-commit now runs `pnpm typecheck && pnpm test`; CI additionally enforces `pnpm format` and `pnpm test:coverage` (thresholds floor: stmts/lines 60%, funcs 65%, branches 78%, ratcheting toward 85%); the one remaining enforcement action is making those checks _required_ in GitHub branch protection (repo-admin setting).
 
-**Impact**: The extension cannot ship; CI `test → typecheck` fails before `build`. Everything else is academic until this goes green.
+The **current** top-3 constraints:
 
-#### 2. **Doc/Test Integrity Drift** (P0)
-`PHASES_COMPLETED.md` reports "357/358 passing, 99.4%". Live run shows **346 pass / 4 fail / 3 skip of 353**. The failures are real (logger context-format assertions, child-logger output). When internal status docs overstate health, reviewers and stakeholders lose trust in the numbers.
+#### 1. **Residual Lint Warnings & Un-typed Legacy Surfaces** (P1)
+
+`pnpm lint` passes but still emits ~164 warnings (unused vars, `console.*` in benchmarks/specs). They are invisible to CI (`eslint .` without `--max-warnings 0`). Recommended: adopt `--max-warnings 0` in CI only after deleting/typing the legacy surfaces incrementally — do not disable the warnings globally.
+
+#### 2. **Coverage Below the 85% Target** (P1)
+
+Baseline coverage measured on 2026-09-07: **stmts/lines 64.5%, funcs 70.4%, branches 83.3%**. The CI floor is set just under baseline so it can ratchet upward. Reaching 85% statements requires integration/E2E-level specs over the extension and storage query paths (see §5 Phase 1, D5–D10).
 
 #### 3. **No Durable Background Execution for MV3** (P1)
-`chrome.alarms`/in-memory work is lost when the MV3 service worker is killed. Savings aggregation, telemetry flush, and offer refresh have no persistent, resumable queue. Phase 1 improved *atomicity of writes* but not *survivability of scheduled work*.
+
+`chrome.alarms`/in-memory work is lost when the MV3 service worker is killed. Savings aggregation, telemetry flush, and offer refresh have no persistent, resumable queue. Phase 1 improved _atomicity of writes_ but not _survivability of scheduled work_.
 
 ---
 
@@ -87,7 +90,8 @@ The **current** top-3 constraints, verified against HEAD:
 **Resolved since last review** (was a weakness): the manual `serializeStrategy()` BigInt handling has been replaced by a centralized `DomainSerializer` with schema versioning + Zod validation (Epic 1.3).
 
 **Remaining concern**:
-- **Cross-cutting infrastructure lives in `domain`** — `logger.ts`, `telemetry.ts`, `circuit-breaker.ts`, `result.ts`, `clock.ts` are excellent but are *observability/resilience infra*, not domain logic. This concentrates churn in the most-imported package and is exactly where the current typecheck errors landed. **Recommendation**: extract to `@payments-optimizer/observability` and `@payments-optimizer/resilience` leaf packages in Phase 2 (see §5).
+
+- **Cross-cutting infrastructure lives in `domain`** — `logger.ts`, `telemetry.ts`, `circuit-breaker.ts`, `result.ts`, `clock.ts` are excellent but are _observability/resilience infra_, not domain logic. This concentrates churn in the most-imported package and is exactly where the current typecheck errors landed. **Recommendation**: extract to `@payments-optimizer/observability` and `@payments-optimizer/resilience` leaf packages in Phase 2 (see §5).
 
 ---
 
@@ -96,6 +100,7 @@ The **current** top-3 constraints, verified against HEAD:
 **Assessment**: ★★★★½ (4.5/5)
 
 **Strengths (all verified in-tree)**:
+
 - **IndexedDB + Repository abstraction** — domain never touches IDB directly (§35).
 - **Currency safety** — `BigInt` minor units, branded currency types; no float money.
 - **Optional AES-256-GCM export encryption** with PBKDF2 key derivation (§36).
@@ -117,6 +122,7 @@ The **current** top-3 constraints, verified against HEAD:
 **Assessment**: ★★★★☆ (4/5)
 
 **Strengths (implemented in Phase 1)**:
+
 - **Result type everywhere** (Epic 1.6): `Result<T,E>` with `Ok`/`Err`, `andThen`/`map`/`mapErr`, `tryCatch`, `combine`, plus 15 typed `DomainError` subclasses with codes and `recoverable` flags.
 - **Circuit breaker** (Epic 1.5): `CLOSED → OPEN → HALF_OPEN` with a health/metrics API; `OfferApiClient` adds timeout + retry and falls back to empty arrays so it never throws on external failure.
 - **Boundary validation**: Zod schemas validate every inbound extension message (Epic 1.3 message schemas).
@@ -126,7 +132,7 @@ The **current** top-3 constraints, verified against HEAD:
 
 1. **Circuit-breaker skip coverage** — one timeout/AbortController test is skipped due to mock-timer interaction. The most important resilience behavior (real timeout) is under-tested. Fix by driving the breaker with the injected `Clock` (Epic 1.8) instead of retrying real timers.
 
-2. **`exactOptionalPropertyTypes` friction** — several errors are *type-level* symptoms of optional-field design (e.g., `OfferApiConfig.circuitBreaker`, `LogEntry.correlationId`). Adopt one convention: prefer `correlationId?: string` **or** `correlationId: string | undefined` consistently, and thread that convention through `DomainError.toJSON()` and the telemetry/serializer boundaries.
+2. **`exactOptionalPropertyTypes` friction** — several errors are _type-level_ symptoms of optional-field design (e.g., `OfferApiConfig.circuitBreaker`, `LogEntry.correlationId`). Adopt one convention: prefer `correlationId?: string` **or** `correlationId: string | undefined` consistently, and thread that convention through `DomainError.toJSON()` and the telemetry/serializer boundaries.
 
 3. **Silent-failure surface is reduced but not eliminated** — savings/save paths persist; ensure each `Result.failure` returned to the UI surfaces a non-blocking banner rather than console-only. Add a small UI-level integration test for the failure path.
 
@@ -134,20 +140,22 @@ The **current** top-3 constraints, verified against HEAD:
 
 ### Observability & Diagnostics
 
-**Assessment**: ★★★☆☆ (3/5) — implemented but not yet trustworthy (its own tests fail).
+**Assessment**: ★★★★☆ (4/5) — implemented, tests now green, remaining gap is durability/instrumentation, not trust.
 
 **Now in place** (Epic 1.9):
+
 - **Structured `Logger`** — JSON + human-readable output, log levels, correlation IDs, context.
-- **Automatic PII redaction** — passwords, tokens, emails, card numbers scrubbed before output.
+- **Automatic PII redaction** — passwords, tokens, emails, card numbers scrubbed before output (the redaction unit tests, including whole-`user`-subtree masking, now pass).
 - **Privacy-first `Telemetry`** — off by default, opt-in only, local-only mode supported, event queue with batching/sampling.
 - **Diagnostics UI** already exists (`apps/extension/src/popup/Diagnostics.tsx`).
 
 **Why it isn't 5/5**:
-- **4 of the failing tests are in `logger.spec.ts`** — context formatting (`action=login`) and child-logger assertions fail. Observability you can't trust is worse than none: it gives false confidence during an incident.
+
 - **No export/flush durability** — telemetry events queue in memory; an MV3 service-worker kill drops them. Needs the durable task queue (ADR-003).
 - **No performance-budget enforcement in CI** — budgets exist as targets (§51) but are not asserted by CI.
 
 **Near-term instrumentations to keep it honest**:
+
 - Emit a structured, redacted event on `optimization_completed` with `durationMs`, `merchantId` (hashed), `strategyCount`, and an `errorCode` on failure — all opt-in.
 - Add a `logBuffer` sink that writes ERROR-level entries to a capped IndexedDB store so the Diagnostics pane can show recent failures without shipping PII anywhere.
 
@@ -155,21 +163,22 @@ The **current** top-3 constraints, verified against HEAD:
 
 ### Testing & Quality Assurance
 
-**Assessment**: ★★★☆☆ (3/5) — strong volume, broken surface, un-enforced gates.
+**Assessment**: ★★★★☆ (4/5) — suite green and trustworthy; gating still manual.
 
 **Strengths**:
-- **353 tests** across 27 files; `Vitest` + `happy-dom`; `fast-check` available for property tests; `Playwright` for E2E (specs exist under `tests/e2e/`).
+
+- **386 tests** across 27 files (verified 2026-09-07); `Vitest` + `happy-dom`; `fast-check` available for property tests; `Playwright` for E2E (specs exist under `tests/e2e/`).
 - **`test-fixtures`** package for reusable cards/merchants/edge cases (multi-currency covered).
 - **Benchmark harness** (`tools/benchmark`, `packages/benchmarks`) for the stacking engine.
 - **CI** runs `install → typecheck → lint → test → build` in two jobs (`.github/workflows/ci.yml`).
 
 **Verified gaps (measured 2026-09-07)**:
 
-1. **4 failing tests / 3 skipped** — `logger.spec.ts` context-format + child-logger assertions fail; 3 skips are polyfill/timer edge cases. Also, the older `createMoney`/`createCart` "missing helper" failure from the audit appears resolved by in-progress uncommitted edits (`stacking-engine.spec.ts` is dirty in the working tree).
+1. **Suite is green but was not kept green** — the logger assertions and storage import-cycle defects are fixed; the suite now reports **386 passed / 3 skipped / 0 failed**. The remaining risk is _prevention_: nothing stops a red commit from landing again.
 
-2. **CI cannot actually catch this** — although CI runs `typecheck` and `test`, these failures are on `main`. That means either (a) the failing specs aren't run in the CI matrix, or (b) merges happened without the gate passing. Either way the gate is not a *blocking* gate in practice. **Fix**: make `pnpm typecheck` and `pnpm test` required, add a pre-commit hook (Husky), and require green before merge.
+2. **CI cannot actually enforce** — although CI runs `typecheck` and `test`, results are advisory (a red suite reached `main` twice). **Fix**: make `pnpm typecheck`, `pnpm test`, and `pnpm lint` required checks; add a pre-commit hook; require green before merge.
 
-3. **Coverage % not measured in CI** — `@vitest/coverage-v8` is installed; coverage is a local command. Enforce a threshold (≥85%) and fail below it.
+3. **Coverage % not measured in CI** — `@vitest/coverage-v8` is installed. A floor was added 2026-09-07 (stmts/lines 60%, funcs 65%, branches 78%) and is enforced via `pnpm test:coverage` in CI; ratchet upward toward the ≥85% target.
 
 4. **Property-based tests exist but are underused** — for a financial engine, add `fast-check` invariants now (discounts never increase effective cost; caps never exceeded; expired offers never add benefit; determinism on identical input). See §5 Phase 1.
 
@@ -179,82 +188,92 @@ The **current** top-3 constraints, verified against HEAD:
 
 ## 3. Critical Modifications & Technical Debt Remediation
 
-This table reflects the **actual, currently-verifiable** debt (not the already-completed Phase 1 items).
+This table now reflects the **current** debt (stabilization complete). The P0 items in rows 181-183 below were **resolved on 2026-09-07** during the stabilization sweep (commit range up to `b62180f`); they are kept as _fixed references_, not open blockers.
 
-| Priority | Category | Component / Module | Issue / Technical Debt | Impact If Ignored | Recommended Fix |
-|----------|----------|--------------------|------------------------|-------------------|-----------------|
-| **P0** | Build | `packages/domain/src/*.ts` | `exactOptionalPropertyTypes` violations & implicit-any in logger/telemetry/offer-api/result (~50 errors) | `pnpm typecheck` red; CI blocks; cannot ship | Resolve `exactOptionalPropertyTypes`: mark fields `?: T` **or** `T \| undefined` consistently; annotate spec lambdas |
-| **P0** | Build | `packages/domain/src/*` | `node16` ESM: missing `.js` extensions on relative imports | Emits runtime/module errors under Node16 resolution | Add `.js` extensions to all relative imports in `domain` |
-| **P0** | Tests | `packages/domain/src/logger.spec.ts` | 4 failing tests (context format, child logger) | Observability untrustworthy; docs lie about health | Fix assertions to match actual formatter; re-run |
-| **P0** | Process | Repo-wide | Typecheck/test reached `main` red; no pre-commit gate | Debt will recur; "green build" is not a real invariant | Add Husky pre-commit (`pnpm build && pnpm test`); make CI checks required |
-| **P1** | Reliability | `apps/extension` (service worker) | No durable task queue for background work; MV3 worker kill drops retries/telemetry/aggregation | Lost telemetry, missed aggregation, silent offer-refresh failure | Implement IndexedDB-backed durable task queue + `chrome.alarms` (ADR-003) |
-| **P1** | Correctness | `packages/storage/transaction-coordinator.ts` | Generic `Operation<T>[]` too narrow for heterogeneous ops (audit §2) | Compile errors / forced `any` at call sites | Refactor `executeAll(op: Operation<any>[])` with per-op variance, keep rollback typing |
-| **P1** | Security | Export/import path | Imported profile not checksum-verified before activation | Tampered export could be activated | Verify `schemaVersion` + checksum before activation; fail closed |
-| **P2** | Hygiene | `packages/domain` | Cross-cutting infra (logger, telemetry, circuit-breaker, result, clock) lives in `domain` | Churn in the most-imported package; bloated public API | Extract `@payments-optimizer/observability` + `@payments-optimizer/resilience` leaf packages (Phase 2) |
-| **P2** | Tests | `packages/domain/src/circuit-breaker.spec.ts` | Timeout test skipped due to mock-timer interaction | Core resilience path under-tested | Drive with injected `Clock` (Epic 1.8) rather than real timers |
-| **P2** | DX | `apps/extension` | No service-worker HMR | Slow iterate (reload loop) | SW HMR via Vite plugin + `chrome.runtime.reload()` signal |
+| Priority | Category    | Component / Module                            | Issue / Technical Debt                                                                                     | Impact If Ignored                              | Recommended Fix                                                                                                                          | Status                                      |
+| -------- | ----------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| **P0**   | Build       | `packages/domain/src/*.ts`                    | `exactOptionalPropertyTypes` violations & implicit-any in logger/telemetry/offer-api/result                | Blocked build                                  | Resolve `exactOptionalPropertyTypes`: mark fields `?: T` **or** `T \| undefined` consistently                                            | ✅ Resolved                                 |
+| **P0**   | Build       | `packages/domain/src/*`                       | `node16` ESM: missing `.js` extensions on relative imports                                                 | Blocked build                                  | Add `.js` extensions to relative imports                                                                                                 | ✅ Resolved                                 |
+| **P0**   | Tests       | `packages/domain/src/logger.spec.ts`          | 4 failing tests (context format, child logger)                                                             | Observability untrustworthy                    | Fixed assertions to match corrected formatter                                                                                            | ✅ Resolved                                 |
+| **P0**   | Reliability | `packages/storage`                            | Circular import (`index.ts` ↔ `savings-repository.ts`) produced `Class extends value undefined` at runtime | Storage broke on import; savings repo unusable | Extracted `base-repository.ts` (VersionedEntity, integrity helpers, StorageRepository, IndexedDbRepository) — cycle eliminated           | ✅ Resolved                                 |
+| **P0**   | Process     | Repo-wide                                     | No pre-commit gate; lint/format not clean                                                                  | Regressions re-enter                           | Adopt Husky pre-commit; add a single **baseline commit** (one-time `format:write` + targeted eslint-disable) so new code is judged clean | ✅ Resolved (2026-09-07)                    |
+| **P1**   | Reliability | `apps/extension` (service worker)             | No durable task queue for background work; MV3 worker kill drops retries/telemetry/aggregation             | Lost telemetry, missed aggregation             | IndexedDB-backed durable task queue + `chrome.alarms` (ADR-003)                                                                          | ⏳ Not started                              |
+| **P1**   | Correctness | `packages/storage/transaction-coordinator.ts` | Generic `Operation<T>[]` too narrow for heterogeneous ops (audit §2)                                       | Compile errors / forced `any` at call sites    | Refactor `executeAll(op: Operation<any>[])` with per-op variance, keep rollback typing                                                   | 🔄 In progress (part of audit fix sequence) |
+| **P1**   | Security    | Export/import path                            | Imported profile not checksum-verified before activation                                                   | Tampered export could be activated             | Verify `schemaVersion` + checksum before activation; fail closed                                                                         | ⏳ Not started                              |
+| **P2**   | Hygiene     | `packages/domain`                             | Cross-cutting infra (logger, telemetry, circuit-breaker, result, clock) lives in `domain`                  | Churn in the most-imported package             | Extract `@payments-optimizer/observability` + `@payments-optimizer/resilience` leaf packages (Phase 2)                                   | ⏳ Not started                              |
+| **P2**   | Tests       | `packages/domain/src/circuit-breaker.spec.ts` | Timeout test skipped due to mock-timer interaction                                                         | Core resilience path under-tested              | Drive with injected `Clock` instead of real timers                                                                                       | ⏳ Not started                              |
+| **P2**   | DX          | `apps/extension`                              | No service-worker HMR                                                                                      | Slow iterate                                   | SW HMR via Vite plugin + `chrome.runtime.reload()` signal                                                                                | ⏳ Not started                              |
 
 ---
 
 ### Before/After: P0 — `exactOptionalPropertyTypes` fixes
 
 **Before (current offending pattern):**
+
 ```typescript
 // packages/domain/src/logger.ts
 export interface LogEntry {
   timestamp: string;
   level: LogLevel;
   message: string;
-  correlationId: string;   // required...
+  correlationId: string; // required...
 }
 // ...later
 const entry: LogEntry = {
-  timestamp, level, message,
-  correlationId: maybeId,  // string | undefined  → TS2375
+  timestamp,
+  level,
+  message,
+  correlationId: maybeId, // string | undefined  → TS2375
 };
 ```
 
 **After (consistent optional conventions):**
+
 ```typescript
 export interface LogEntry {
   timestamp: string;
   level: LogLevel;
   message: string;
-  correlationId?: string;        // <-- optional
+  correlationId?: string; // <-- optional
   context?: Record<string, unknown>;
 }
 
 const entry: LogEntry = {
-  timestamp, level, message,
+  timestamp,
+  level,
+  message,
   ...(maybeId !== undefined && { correlationId: maybeId }),
 };
 ```
 
 For `OfferApiConfig.circuitBreaker` prefer explicit-undefined:
+
 ```typescript
 interface OfferApiConfig {
   baseUrl: string;
   timeout: number;
   retries: number;
-  circuitBreaker: CircuitBreakerConfig | undefined;  // explicit, satisfies exactOptionalPropertyTypes
+  circuitBreaker: CircuitBreakerConfig | undefined; // explicit, satisfies exactOptionalPropertyTypes
 }
 ```
 
-**Rule of thumb**: use `?: T` for *absent* concepts and `T | undefined` where "explicitly not set" is meaningful.
+**Rule of thumb**: use `?: T` for _absent_ concepts and `T | undefined` where "explicitly not set" is meaningful.
 
 ---
 
 ### Before/After: P0 — `node16` ESM import extensions
 
 **Before:**
+
 ```typescript
 // packages/domain/src/logger.ts
-import { ok, err } from './result';      // TS2835
-import { SystemClock } from './clock';   // TS2835
-import { DomainError } from './errors';  // TS2835
+import { ok, err } from './result'; // TS2835
+import { SystemClock } from './clock'; // TS2835
+import { DomainError } from './errors'; // TS2835
 ```
 
 **After:**
+
 ```typescript
 import { ok, err } from './result.js';
 import { SystemClock } from './clock.js';
@@ -270,27 +289,33 @@ Apply across `logger.ts`, `telemetry.ts`, `result.spec.ts`, `message-schemas`, e
 ### Performance & Scalability
 
 #### 1. **Three-Tier Caching for the Public Benefit Catalog**
+
 **Gap**: `offers-bundle.json` (plus merchant metadata) is parsed on every service-worker cold start and duplicated per tab.
 
 **Target architecture** (L1 → L2 → L3):
+
 ```
 L1: Service-worker memory (V8 heap)   — active merchant offers, TTL ~5 min, ~50 KB
 L2: IndexedDB (cross-tab shared)      — full catalog, TTL 1 day; merchant data TTL 7 days
 L3: Remote public-data CDN (optional) — versioned bundle, refreshed on install/weekly
 ```
-Honor the local-first boundary: L3 fetches only versioned *public* data and never carries profile/cart identifiers (§38). Add a content-addressed version/checksum so stale bundles are atomically rejected (§47).
+
+Honor the local-first boundary: L3 fetches only versioned _public_ data and never carries profile/cart identifiers (§38). Add a content-addressed version/checksum so stale bundles are atomically rejected (§47).
 
 **Expected impact**: cold-start parse 250ms → <50ms; per-tab memory duplication eliminated via L2 sharing.
 
 #### 2. **Durable Background Task Queue (MV3-safe)**
+
 **Gap**: aggregation, offer refresh, and telemetry flush are not resumable if the service worker is killed mid-task.
 
 Adopt the IndexedDB-backed queue from ADR-003 (§6) with `chrome.alarms` as the wake trigger and exponential backoff. This also gives retries for circuit-broken offer fetches a durable home.
 
 #### 3. **Move Savings Aggregation Off the Render Path**
+
 Current savings-summary components aggregate synchronously over history. Pre-compute daily/merchant aggregates in the background worker (6h alarm) and store them in an `aggregates` store; UI reads precomputed rollups with an invalidation timestamp.
 
 #### 4. **Keep IndexedDB Access Concentrated**
+
 Verify all IDB reads/writes go through the repository/savings-repository abstractions; add a lint rule (`no-restricted-globals` on `indexedDB` outside `packages/storage`) so the layering guarantee survives code review.
 
 ---
@@ -302,11 +327,10 @@ Verify all IDB reads/writes go through the repository/savings-repository abstrac
    - Mark `typecheck`, `test`, `build` as **required** checks on the PR branch; add a `coverage ≥ 85%` step using the already-installed `@vitest/coverage-v8`.
    - Add `tsc --noEmit` to the extension package's own script so the whole workspace is covered.
 
-2. **Unblock the red build first (est. 1–2 days)**
-   - Mechanical PR 1: add `.js` extensions across `packages/domain`.
-   - PR 2: resolve `exactOptionalPropertyTypes` mismatches using the `?: T` vs `T | undefined` convention from §3.
-   - PR 3: fix the 4 `logger.spec.ts` assertions to the formatter's real output contract.
-   Land each with green CI before merging the next — this restores the "gate is real" invariant.
+2. **Green gate is done; harden it now (est. 1–2 days)**
+   - The typecheck/test/build legs are already green (committed through `b62180f`).
+   - Next: add a single **Prettier baseline commit** (`pnpm format:write`) plus a small legacy allow-list in ESLint config so `pnpm lint` becomes a real gate; then add Husky pre-commit (`pnpm typecheck && pnpm test`) and mark the checks required in branch protection.
+   - Land each with green CI before merging the next — this makes "gate is real" permanent.
 
 3. **Service-Worker HMR** for the extension (Vite plugin sending a `sw-reload` signal to `chrome.runtime.reload()`).
 
@@ -319,6 +343,7 @@ Verify all IDB reads/writes go through the repository/savings-repository abstrac
 ### Security & Hardening Quick-Wins
 
 1. **CSP tightening in `manifest.json`**:
+
 ```json
 {
   "content_security_policy": {
@@ -329,7 +354,7 @@ Verify all IDB reads/writes go through the repository/savings-repository abstrac
 
 2. **Profile import fails closed**: decrypt → validate `schemaVersion` → verify checksum → validate domain invariants → migrate → activate (§61). Any mismatch rejects the file with a structured `ImportError`.
 
-3. **Optional-field hygiene** (directly tied to the typecheck debt): never write `field?: string` and then assign `field: maybeUndefined`. Standardize on the §3 convention — this is a *security* issue too, because `undefined` leakage is how optional state silently reaches serializers.
+3. **Optional-field hygiene** (directly tied to the typecheck debt): never write `field?: string` and then assign `field: maybeUndefined`. Standardize on the §3 convention — this is a _security_ issue too, because `undefined` leakage is how optional state silently reaches serializers.
 
 4. **Network allowlist test**: add a CI test that greps the built bundle for hardcoded endpoints and asserts they belong to the approved public-data allowlist (§39).
 
@@ -341,11 +366,13 @@ Verify all IDB reads/writes go through the repository/savings-repository abstrac
 
 **Exit criterion**: `pnpm typecheck`, `pnpm test`, `pnpm build`, and `pnpm lint` all green on `main`, enforced by CI.
 
-- [ ] **D1–2**: Mechanical `.js`-extension PR + `exactOptionalPropertyTypes` fix PR (domain). Land with green CI.
-- [ ] **D3**: Fix `logger.spec.ts` (4 failures); un-skip circuit-breaker timeout test via `TestClock`.
-- [ ] **D4**: Add Husky pre-commit hook; mark CI checks required; add coverage ≥85% step; publish accurate test counts.
+**Status (verified 2026-09-07)**: the gate is fully green — typecheck, 386 tests, build, **lint**, and **format** all pass locally, Husky pre-commit runs `typecheck && test`, and CI enforces `format` + `test:coverage` thresholds. Remaining work is test-coverage depth (D5–D10), not gating.
+
+- [x] **D1–2**: `.js`-extension + `exactOptionalPropertyTypes` fix (domain) — done, green.
+- [x] **D3**: Fix `logger.spec.ts` + recover child-logger context — done.
+- [x] **D4**: Lint/Prettier baseline; Husky pre-commit (`pnpm typecheck && pnpm test`); CI format + coverage steps; coverage floor thresholds — done. (Enforce `--max-warnings 0` once warnings are retired; enable branch protection on the checks.)
 - [ ] **D5–7**: Add property-based invariants (fast-check): discount never raises effective cost; rewards never exceed caps; expired offers never add benefit; identical inputs → identical outputs; sorted-by-score invariant.
-- [ ] **D8–10**: Add Playwright integration tests for the failure paths: save-failure banner, circuit-breaker offline fallback, invalid-message rejection, atomic voucher-burn rollback.
+- [ ] **D8–10**: Add Playwright integration tests for failure paths (save-failure banner, circuit-breaker offline fallback, invalid-message rejection, atomic voucher-burn rollback).
 
 **Deliverables**: green build, trustworthy suite, enforced gates, documented error-path behavior.
 
@@ -366,21 +393,25 @@ Verify all IDB reads/writes go through the repository/savings-repository abstrac
 ### Phase 3: Next-Generation Feature Expansion (Long-Term: Month 4–6+)
 
 #### Feature 3.1 — AI-Powered Predictive Insights
+
 - **Business/Technical Value**: retention via proactive, spend-pattern-aware suggestions; differentiator.
 - **Complexity**: High.
 - **Prerequisites**: privacy-safe analytics (k-anonymity, ε=0.1 DP per ADR-006), local time-series storage, on-device inference (TF.js/WASM), and strict quarantine of AI from money math (§44).
 
 #### Feature 3.2 — Cross-Currency "International Travel Mode"
+
 - **Business/Technical Value**: expands TAM beyond INR markets; exercises the multi-currency domain model already in place.
 - **Complexity**: Medium.
-- **Prerequisites**: explicit rate tracking (source, rate, timestamp) with *no silent cross-currency comparison*, forex datasets, geolocation permission review.
+- **Prerequisites**: explicit rate tracking (source, rate, timestamp) with _no silent cross-currency comparison_, forex datasets, geolocation permission review.
 
 #### Feature 3.3 — Savings Dashboard & Analytics
+
 - **Business/Technical Value**: retention and share-of-wallet; feeds telemetry insights.
 - **Complexity**: Medium.
 - **Prerequisites**: aggregated savings store (Phase 2 item 3), sharding decision (ADR-005) before 10k+ entries.
 
 #### Feature 3.4 — Community-Verified Offers (Privacy-First)
+
 - **Business/Technical Value**: network effects / offer coverage moat.
 - **Complexity**: High (backend + reputation + differential privacy).
 - **Prerequisites**: hybrid-cloud decision (ADR-006), offer-signing for community submissions, explicit opt-in.
@@ -394,6 +425,7 @@ The team must formally decide these before scaling. ADR-001 (repository foundati
 ---
 
 ### ADR-003: Durable Background Execution for MV3
+
 **Context**: MV3 service workers are killable at any time. Telemetry flush, savings aggregation, and offer refresh must survive worker termination.
 **Options**: Chrome Alarms (periodic, 1-min granularity); Background Sync (one-shot, not periodic); in-memory worker queue (lost on kill).
 **Recommended**: **IndexedDB-backed durable task queue** with state (`scheduledAt`, `retries`, `lease`) + `chrome.alarms` as the wake trigger; exponential backoff; no more than one in-flight lease per task type.
@@ -401,6 +433,7 @@ The team must formally decide these before scaling. ADR-001 (repository foundati
 ---
 
 ### ADR-004: Cross-Tab State Synchronization
+
 **Context**: Popup, content script, and service worker must observe the same state (voucher burns, profile changes) across tabs.
 **Options**: `BroadcastChannel` (real-time, not available in service workers); `chrome.storage.onChanged` (available everywhere, storage-scoped); polling (wasteful).
 **Recommended**: **BroadcastChannel for tab-to-tab**; **`chrome.storage.onChanged` as the service-worker bridge**; treat IndexedDB as the single source of truth for writes.
@@ -408,6 +441,7 @@ The team must formally decide these before scaling. ADR-001 (repository foundati
 ---
 
 ### ADR-005: Savings History Partitioning
+
 **Context**: Unbounded growth of `savings` entries degrades queries even with indexes.
 **Options**: single store (now); time-based sharding (per-year DBs); merchant-based sharding.
 **Recommended**: defer until ~10k entries/production signal, but **pre-decide now**: time-based sharding by year with an `aggregates` rollup, keeping cross-year queries rare and explicit.
@@ -415,6 +449,7 @@ The team must formally decide these before scaling. ADR-001 (repository foundati
 ---
 
 ### ADR-006: Local-First vs. Hybrid Cloud
+
 **Context**: Community offers, ML insights, and affiliate revenue want server support; the product's moat is local-first privacy.
 **Recommended**: **Hybrid with a hard privacy boundary** — optimization, profile, and history stay local; only opt-in, anonymized, k-anonymous telemetry and versioned public-data fetches leave the device. Any future cloud service must pass the §64 rule ("architecture makes accidental telemetry difficult").
 
@@ -422,28 +457,30 @@ The team must formally decide these before scaling. ADR-001 (repository foundati
 
 ## Conclusion
 
-PaymentsOptimizer's architecture is genuinely strong: deterministic BigInt money-math, disciplined pattern adoption (Result, saga, circuit breaker, clock injection), clean monorepo layering, and privacy as a first-class invariant. Phase 1 delivered the right *patterns*; what remains is to make the *gate* real.
+PaymentsOptimizer's architecture is genuinely strong: deterministic BigInt money-math, disciplined pattern adoption (Result, saga, circuit breaker, clock injection), clean monorepo layering, and privacy as a first-class invariant. Phase 1 delivered the right _patterns_; the stabilization sweep made the _build gate_ real.
 
-The current red build (~50 typecheck errors, 4 failing tests) is not an architecture problem — it is a **process problem** and it is **isolated and mechanical** (≈1–2 days of PRs). Fix that first; it restores trust in every other signal (CI, docs, coverage).
+The 2026-09-07 stabilization commits (up to `b62180f`, plus the gate-hardening work described here) closed the build gate: `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm lint`, and `pnpm format` now pass, Husky enforces `typecheck && test` before every commit, and CI additionally enforces format and a coverage floor. The system is now _hard to accidentally take off green again_.
 
-After the gate is green, the highest-leverage engineering investments are, in order:
-1. **Green gate + enforced CI** (Days 1–10).
+The highest-leverage engineering focus is now on (in order):
+
+1. **D5–D10 test depth** — fast-check financial invariants + Playwright failure-path specs; these move coverage from 64.5% toward ≥85% and cover error paths no unit test exercises today.
 2. **Durable background execution + cross-tab coordination** (Month 2–3) — closes the last MV3 lifecycle gaps.
 3. **Extract observability/resilience leaf packages** to protect `domain` from infrastructure churn.
-4. Feature expansion (AI insights, travel mode, community offers) only after 1–3, because each depends on durable analytics and clean package boundaries.
+4. Feature expansion (the five production features defined below) only after the above, because each depends on durable analytics and clean package boundaries.
 
 **Success Metrics** (3-month horizon):
-- `pnpm typecheck && pnpm test && pnpm build` green on every PR (enforced, not aspirational)
-- Test coverage ≥85%; 0 skipped resilience tests
+
+- `pnpm typecheck && pnpm test && pnpm build` green on every PR (enforced by Husky + CI, not aspirational)
+- Test coverage floor enforced in CI and ratcheted from 64.5% up to ≥85%; 0 skipped resilience tests
 - P95 optimization latency <100ms for 50+ voucher profiles (CI-asserted)
 - Zero voucher double-spend / data-corruption incidents across tabs
 - Zero telemetry egress by default; PII redaction verified by tests
 
 ---
 
-**Document Version**: 2.0
+**Document Version**: 2.2
 **Last Updated**: September 7, 2026
-**Next Review**: December 7, 2026 (or immediately after the build gate is green)
+**Next Review**: December 7, 2026
 
 ---
 

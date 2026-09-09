@@ -11,6 +11,7 @@ Implemented a transaction coordinator with Operation interface and compensating 
 ## Problem Statement
 
 The previous implementation (in `service-worker.ts`) performed voucher burns and savings writes as independent operations:
+
 - Burn voucher → Update profile → Save savings
 - If any step failed after voucher burn, the voucher value was lost with no record
 - No rollback mechanism for partial failures
@@ -84,7 +85,7 @@ interface OperationResult<T = void> {
   success: boolean;
   data?: T;
   error?: Error;
-  rollbackData?: unknown;  // State needed for rollback
+  rollbackData?: unknown; // State needed for rollback
 }
 ```
 
@@ -95,12 +96,14 @@ interface OperationResult<T = void> {
 **Purpose**: Reduces voucher balance atomically
 
 **Execute**:
+
 - Validates voucher exists and has sufficient balance
 - Stores previous balance as rollback data
 - Updates voucher with new reduced balance
 - Returns amount burned
 
 **Rollback**:
+
 - Restores voucher to previous balance
 - Re-validates voucher still exists
 
@@ -111,10 +114,12 @@ interface OperationResult<T = void> {
 **Purpose**: Persists savings entry to history
 
 **Execute**:
+
 - Writes savings entry to repository
 - Returns entry ID as rollback data
 
 **Rollback**:
+
 - Deletes savings entry by ID
 
 **Key**: Simple create/delete pattern for immutable records
@@ -124,11 +129,13 @@ interface OperationResult<T = void> {
 **Purpose**: Updates user profile with optimization metadata
 
 **Execute**:
+
 - Stores complete previous profile state
 - Applies partial updates to profile
 - Returns previous state as rollback data
 
 **Rollback**:
+
 - Restores entire previous profile state
 - Handles nested object updates correctly
 
@@ -167,29 +174,35 @@ interface UserProfileEntity {
 ### Transaction Coordinator Tests (11 tests)
 
 **Basic Functionality** (3 tests):
+
 - Single operation execution
 - Multiple operations in sequence
 - Empty operations list
 
 **Rollback on Failure** (3 tests):
+
 - Rollback first when second fails
 - LIFO (reverse order) rollback
 - Continue rollback despite individual rollback failures
 
 **Timeout Handling** (1 test - skipped):
+
 - Timeout detection (skipped due to timing precision in unit tests)
 
 **Error Handling** (2 tests):
+
 - Unexpected error handling
 - Partial results in error
 
 **Verbose Logging** (2 tests):
+
 - Execution step logging
 - Rollback step logging
 
 ### Operation Integration Tests (13 tests)
 
 **BurnVoucherOperation** (5 tests):
+
 - Successful voucher burn
 - Voucher not found error
 - Insufficient balance error
@@ -197,15 +210,18 @@ interface UserProfileEntity {
 - Multiple sequential burns
 
 **SaveSavingsOperation** (2 tests):
+
 - Successful savings entry creation
 - Rollback deletes entry
 
 **UpdateProfileOperation** (3 tests):
+
 - Successful profile update
 - Profile not found error
 - Rollback restores previous state
 
 **End-to-End Integration** (3 tests):
+
 - ✅ Atomic burn + save + update (all succeed)
 - ✅ Rollback burn when save fails
 - ✅ Rollback burn + save when update fails
@@ -250,16 +266,16 @@ const coordinator = new TransactionCoordinator();
 const operations = [
   new BurnVoucherOperation(voucherRepo, 'voucher-123', { amountMinor: 50000n, currency: 'INR' }),
   new SaveSavingsOperation(savingsRepo, savingsEntry),
-  new UpdateProfileOperation(profileRepo, 'profile-1', { 
+  new UpdateProfileOperation(profileRepo, 'profile-1', {
     lastOptimizationTimestamp: Date.now(),
-    totalSavings: { amountMinor: '50000', currency: 'INR' }
+    totalSavings: { amountMinor: '50000', currency: 'INR' },
   }),
 ];
 
 // Execute atomically
-const result = await coordinator.executeAtomically(operations, { 
+const result = await coordinator.executeAtomically(operations, {
   timeout: 30000,
-  verbose: true  // Enable logging for debugging
+  verbose: true, // Enable logging for debugging
 });
 
 if (result.success) {
@@ -281,7 +297,7 @@ The transaction coordinator is ready but not yet wired into the service worker. 
 
 2. Add repositories for IndexedDB access:
    - Voucher repository
-   - Savings repository  
+   - Savings repository
    - Profile repository
 
 3. Update message handling:
@@ -296,7 +312,7 @@ The transaction coordinator is ready but not yet wired into the service worker. 
 ✅ **Debuggability**: Structured errors with failure context  
 ✅ **Testability**: Operations easily mocked and tested  
 ✅ **Extensibility**: New operations trivial to add  
-✅ **Maintainability**: Clear separation of concerns  
+✅ **Maintainability**: Clear separation of concerns
 
 ## Performance
 
@@ -317,6 +333,7 @@ Benchmark not required for this epic as correctness is the primary concern.
 ## Next Steps
 
 Epic 1.2 is complete. Ready to proceed to:
+
 - **Epic 1.3**: Domain Serializer for Message Passing
 - **Service Worker Integration**: Wire coordinator into optimization flow (post-Phase 1)
 

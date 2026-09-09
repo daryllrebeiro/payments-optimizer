@@ -28,8 +28,14 @@ jobs:
       - name: Run linter
         run: pnpm lint
 
+      - name: Check formatting
+        run: pnpm format
+
       - name: Run tests
         run: pnpm test
+
+      - name: Enforce coverage threshold
+        run: pnpm test:coverage
 
   build:
     runs-on: ubuntu-latest

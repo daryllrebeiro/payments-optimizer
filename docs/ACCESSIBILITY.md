@@ -51,6 +51,7 @@ All interactive elements include appropriate ARIA labels:
 ### Semantic HTML
 
 We use semantic HTML5 elements throughout:
+
 - `<header>` for page header
 - `<nav>` for navigation
 - `<main>` for main content
@@ -70,13 +71,13 @@ We use semantic HTML5 elements throughout:
 
 ### Global Shortcuts
 
-| Key | Action |
-|-----|--------|
-| `Tab` | Move to next interactive element |
-| `Shift + Tab` | Move to previous interactive element |
-| `Enter` / `Space` | Activate button or link |
-| `Escape` | Close modal or dialog |
-| `Arrow Keys` | Navigate within lists |
+| Key               | Action                               |
+| ----------------- | ------------------------------------ |
+| `Tab`             | Move to next interactive element     |
+| `Shift + Tab`     | Move to previous interactive element |
+| `Enter` / `Space` | Activate button or link              |
+| `Escape`          | Close modal or dialog                |
+| `Arrow Keys`      | Navigate within lists                |
 
 ### Navigation Bar
 
@@ -89,12 +90,14 @@ Enter → Activate navigation button
 ### Modal Dialogs
 
 When a modal opens:
+
 1. Focus moves to the first interactive element
 2. Tab navigation is trapped within modal
 3. Escape key closes modal
 4. Focus returns to trigger element on close
 
 **Example:**
+
 ```tsx
 import { createFocusTrap } from './accessibility';
 
@@ -145,9 +148,9 @@ announce('Failed to load profile', 'assertive');
 import { formatCurrencyForSR, describeStrategy } from './accessibility';
 
 const description = describeStrategy(
-  125000n,  // amountMinor
+  125000n, // amountMinor
   'INR',
-  3  // step count
+  3 // step count
 );
 ```
 
@@ -186,15 +189,15 @@ Purely decorative elements are hidden from screen readers:
 
 All text meets WCAG 2.1 Level AA contrast requirements:
 
-| Element | Foreground | Background | Ratio | Required |
-|---------|------------|------------|-------|----------|
-| Body text | `#e5e7eb` | `#1a1a2e` | 12.63:1 | 4.5:1 ✓ |
-| Headings | `#ffffff` | `#1a1a2e` | 15.29:1 | 3:1 ✓ |
-| Primary button | `#ffffff` | `#6366f1` | 4.53:1 | 3:1 ✓ |
-| Links | `#818cf8` | `#1a1a2e` | 8.12:1 | 4.5:1 ✓ |
-| Success | `#34d399` | `#1a1a2e` | 9.41:1 | 3:1 ✓ |
-| Warning | `#fbbf24` | `#1a1a2e` | 12.72:1 | 3:1 ✓ |
-| Error | `#f87171` | `#1a1a2e` | 6.83:1 | 3:1 ✓ |
+| Element        | Foreground | Background | Ratio   | Required |
+| -------------- | ---------- | ---------- | ------- | -------- |
+| Body text      | `#e5e7eb`  | `#1a1a2e`  | 12.63:1 | 4.5:1 ✓  |
+| Headings       | `#ffffff`  | `#1a1a2e`  | 15.29:1 | 3:1 ✓    |
+| Primary button | `#ffffff`  | `#6366f1`  | 4.53:1  | 3:1 ✓    |
+| Links          | `#818cf8`  | `#1a1a2e`  | 8.12:1  | 4.5:1 ✓  |
+| Success        | `#34d399`  | `#1a1a2e`  | 9.41:1  | 3:1 ✓    |
+| Warning        | `#fbbf24`  | `#1a1a2e`  | 12.72:1 | 3:1 ✓    |
+| Error          | `#f87171`  | `#1a1a2e`  | 6.83:1  | 3:1 ✓    |
 
 ### Color Independence
 
@@ -214,6 +217,7 @@ Information is never conveyed by color alone:
 ### Dark Mode
 
 The extension uses a dark theme with:
+
 - Reduced blue light emission
 - Comfortable contrast ratios
 - No pure white (`#ffffff` on backgrounds)
@@ -225,6 +229,7 @@ The extension uses a dark theme with:
 ### Manual Testing
 
 #### Keyboard Navigation Test
+
 1. Use only keyboard (no mouse)
 2. Tab through all interactive elements
 3. Verify focus is always visible
@@ -232,11 +237,13 @@ The extension uses a dark theme with:
 5. Verify Escape closes modals
 
 #### Screen Reader Test
+
 1. **NVDA** (Windows): Download from nvaccess.org
-2. **JAWS** (Windows): Trial from freedomscientific.com  
+2. **JAWS** (Windows): Trial from freedomscientific.com
 3. **VoiceOver** (macOS): Built-in, Cmd+F5 to enable
 
 **Test checklist:**
+
 - [ ] All buttons announce correctly
 - [ ] Navigation changes are announced
 - [ ] Form fields have labels
@@ -247,12 +254,14 @@ The extension uses a dark theme with:
 #### Color Contrast Test
 
 Use browser DevTools:
+
 1. Open DevTools → Elements
 2. Select element with text
 3. Look for contrast ratio in Styles pane
 4. Verify ratio meets WCAG AA
 
 Or use online tools:
+
 - WebAIM Contrast Checker: https://webaim.org/resources/contrastchecker/
 - Coolors Contrast Checker: https://coolors.co/contrast-checker
 
@@ -267,6 +276,7 @@ pnpm add -D @axe-core/react
 ```
 
 **Example test:**
+
 ```typescript
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
@@ -303,13 +313,13 @@ describe('Dashboard Accessibility', () => {
 
 ### Browser Compatibility
 
-| Browser | Screen Reader | Status |
-|---------|--------------|--------|
-| Chrome | NVDA | ✓ Full support |
-| Chrome | JAWS | ✓ Full support |
-| Firefox | NVDA | ✓ Full support |
-| Edge | Narrator | ⚠ Partial support |
-| Safari | VoiceOver | ✓ Full support |
+| Browser | Screen Reader | Status            |
+| ------- | ------------- | ----------------- |
+| Chrome  | NVDA          | ✓ Full support    |
+| Chrome  | JAWS          | ✓ Full support    |
+| Firefox | NVDA          | ✓ Full support    |
+| Edge    | Narrator      | ⚠ Partial support |
+| Safari  | VoiceOver     | ✓ Full support    |
 
 ---
 
@@ -318,20 +328,23 @@ describe('Dashboard Accessibility', () => {
 ### When Adding UI Components
 
 1. **Use semantic HTML**
+
    ```tsx
    // ✅ Good
    <button onClick={handleClick}>Click me</button>
-   
+
    // ❌ Bad
    <div onClick={handleClick}>Click me</div>
    ```
 
 2. **Add ARIA labels**
+
    ```tsx
    <button aria-label="Close dialog">×</button>
    ```
 
 3. **Manage focus**
+
    ```tsx
    useEffect(() => {
      if (isOpen) {
@@ -353,25 +366,19 @@ describe('Dashboard Accessibility', () => {
 ### Common Patterns
 
 **Modal Dialog:**
+
 ```tsx
-<div
-  role="dialog"
-  aria-modal="true"
-  aria-labelledby="dialog-title"
-  ref={dialogRef}
->
+<div role="dialog" aria-modal="true" aria-labelledby="dialog-title" ref={dialogRef}>
   <h2 id="dialog-title">Dialog Title</h2>
   {/* Content */}
-  <button
-    onClick={onClose}
-    aria-label="Close dialog"
-  >
+  <button onClick={onClose} aria-label="Close dialog">
     ×
   </button>
 </div>
 ```
 
 **Loading State:**
+
 ```tsx
 <div role="status" aria-live="polite">
   {loading ? (
@@ -386,6 +393,7 @@ describe('Dashboard Accessibility', () => {
 ```
 
 **Form Field:**
+
 ```tsx
 <div>
   <label htmlFor="card-name">
@@ -441,15 +449,17 @@ Found an accessibility issue? Please report it!
 **Title**: Dashboard "Why?" button not accessible via keyboard
 
 **Environment**:
+
 - Chrome 120
 - NVDA 2023.3
 - Windows 11
 
 **Description**:
-The "Why?" explanation button on the dashboard cannot be focused 
+The "Why?" explanation button on the dashboard cannot be focused
 via keyboard navigation.
 
 **Steps to Reproduce**:
+
 1. Navigate to Dashboard
 2. Press Tab repeatedly
 3. Observe that button is skipped
@@ -466,15 +476,18 @@ via keyboard navigation.
 ## Resources
 
 ### WCAG Guidelines
+
 - [WCAG 2.1 Overview](https://www.w3.org/WAI/WCAG21/quickref/)
 - [WebAIM WCAG Checklist](https://webaim.org/standards/wcag/checklist)
 
 ### Testing Tools
+
 - [NVDA Screen Reader](https://www.nvaccess.org/)
 - [axe DevTools](https://www.deque.com/axe/devtools/)
 - [WAVE Browser Extension](https://wave.webaim.org/extension/)
 
 ### Further Reading
+
 - [MDN Accessibility](https://developer.mozilla.org/en-US/docs/Web/Accessibility)
 - [A11y Project](https://www.a11yproject.com/)
 - [Inclusive Components](https://inclusive-components.design/)

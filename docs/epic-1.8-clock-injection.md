@@ -11,6 +11,7 @@ Implemented a Clock abstraction that enables deterministic time handling in test
 ## Problem Statement
 
 Time-dependent code is notoriously difficult to test:
+
 - `Date.now()` returns different values in each test run
 - `setTimeout` makes tests slow and flaky
 - Time-based logic (expiry, timeouts, retries) requires waiting
@@ -25,18 +26,20 @@ Time-dependent code is notoriously difficult to test:
 
 ```typescript
 interface Clock {
-  now(): number;        // Milliseconds since epoch
-  date(): Date;         // Current Date object
-  toISO(): string;      // ISO 8601 string
+  now(): number; // Milliseconds since epoch
+  date(): Date; // Current Date object
+  toISO(): string; // ISO 8601 string
 }
 ```
 
 #### 2. SystemClock (Production)
+
 - Uses real `Date.now()` and `new Date()`
 - Default clock for production code
 - No overhead - direct passthrough to system time
 
 #### 3. TestClock (Testing)
+
 - Controllable time progression
 - Start at specific timestamp
 - Advance time instantly (no waiting)
@@ -49,16 +52,16 @@ interface Clock {
 const clock = new TestClock('2021-01-01T00:00:00.000Z');
 
 // Time retrieval
-clock.now();       // Get timestamp
-clock.date();      // Get Date object
-clock.toISO();     // Get ISO string
+clock.now(); // Get timestamp
+clock.date(); // Get Date object
+clock.toISO(); // Get ISO string
 
 // Time manipulation
-clock.advance(5000);        // Advance 5 seconds
-clock.advanceSeconds(30);   // Advance 30 seconds
-clock.advanceMinutes(5);    // Advance 5 minutes
-clock.advanceHours(2);      // Advance 2 hours
-clock.advanceDays(7);       // Advance 7 days
+clock.advance(5000); // Advance 5 seconds
+clock.advanceSeconds(30); // Advance 30 seconds
+clock.advanceMinutes(5); // Advance 5 minutes
+clock.advanceHours(2); // Advance 2 hours
+clock.advanceDays(7); // Advance 7 days
 
 // Set absolute time
 clock.setTime(timestamp);
@@ -66,7 +69,7 @@ clock.setTime(new Date('2022-06-15'));
 clock.setTime('2022-06-15T12:00:00Z');
 
 // Reset
-clock.reset();  // Reset to current real time
+clock.reset(); // Reset to current real time
 ```
 
 ### Global Clock Management
@@ -86,26 +89,31 @@ resetClock();
 ## Design Decisions
 
 ### 1. Interface-Based Abstraction
+
 - **Rationale:** Enables dependency injection, polymorphism
 - **Benefit:** Easy to swap implementations, testable, type-safe
 - **Rejected:** Global mocking of Date (fragile, affects all code)
 
 ### 2. Global Clock + Dependency Injection
+
 - **Rationale:** Supports both patterns - global for convenience, injection for flexibility
 - **Benefit:** Gradual migration, works with existing code
 - **Rejected:** Pure dependency injection only (too invasive for existing code)
 
 ### 3. Instant Time Progression
+
 - **Rationale:** Tests should be fast, no waiting for timeouts
 - **Benefit:** Tests run in milliseconds instead of seconds/minutes
 - **Rejected:** Real delays in tests (slow, flaky)
 
 ### 4. Helper Methods (advanceMinutes, etc.)
+
 - **Rationale:** Common operations should be convenient
 - **Benefit:** Readable test code, less mental math
 - **Rejected:** Only advance(ms) (less readable)
 
 ### 5. Multiple Initialization Formats
+
 - **Rationale:** Tests use various date formats
 - **Benefit:** Flexible, works with existing test data
 - **Rejected:** Single format only (less convenient)
@@ -179,11 +187,11 @@ async function fetchWithTimeout<T>(
 ): Promise<T> {
   const startTime = clock.now();
   const result = await fn();
-  
+
   if (clock.now() - startTime > timeoutMs) {
     throw new TimeoutError('Request timed out', timeoutMs, 'fetch');
   }
-  
+
   return result;
 }
 
@@ -216,10 +224,10 @@ async function retryWithBackoff<T>(
       return await fn();
     } catch (error) {
       if (attempt === maxRetries - 1) throw error;
-      
+
       const delayMs = Math.pow(2, attempt) * 1000; // Exponential backoff
       const retryTime = clock.now() + delayMs;
-      
+
       while (clock.now() < retryTime) {
         // In production, would await delay
         // In tests, clock.advance() bypasses this
@@ -252,15 +260,17 @@ expect(timestamps).toEqual([0, 1000, 3000, 7000]); // Exponential backoff verifi
 // Without clock injection - would take 60+ seconds
 test('circuit breaker recovers after timeout', async () => {
   const breaker = new CircuitBreaker();
-  
+
   // Open circuit
   for (let i = 0; i < 5; i++) {
-    breaker.execute(() => { throw new Error(); });
+    breaker.execute(() => {
+      throw new Error();
+    });
   }
-  
+
   // Would need to wait 60 seconds here!
   await sleep(60000);
-  
+
   // Test recovery...
 });
 
@@ -268,15 +278,17 @@ test('circuit breaker recovers after timeout', async () => {
 test('circuit breaker recovers after timeout', () => {
   const clock = createTestClock();
   const breaker = new CircuitBreaker(clock);
-  
+
   // Open circuit
   for (let i = 0; i < 5; i++) {
-    breaker.execute(() => { throw new Error(); });
+    breaker.execute(() => {
+      throw new Error();
+    });
   }
-  
+
   // Instant time travel!
   clock.advanceMinutes(1);
-  
+
   // Test recovery immediately
   expect(breaker.getState()).toBe('HALF_OPEN');
 });
@@ -285,22 +297,26 @@ test('circuit breaker recovers after timeout', () => {
 ## Migration Path
 
 ### Phase 1: Core Infrastructure (✅ Complete)
+
 - Clock interface and implementations
 - Test clock with time control
 - Global clock management
 - Comprehensive tests (36 passing)
 
 ### Phase 2: Circuit Breaker (Future)
+
 - Update CircuitBreaker to accept Clock parameter
 - Update circuit breaker tests to use TestClock
 - Remove setTimeout/Date.now() usage
 
 ### Phase 3: Storage Layer (Future)
+
 - Update SavingsEntry timestamps to use Clock
 - Update MigrationRunner to use Clock
 - Update expiry checks to use Clock
 
 ### Phase 4: Benefits Layer (Future)
+
 - Update voucher expiry checks
 - Update membership validity checks
 - Update offer validity checks
@@ -308,12 +324,14 @@ test('circuit breaker recovers after timeout', () => {
 ## Test Coverage
 
 ### SystemClock Tests (4 passing)
+
 - Returns current time within acceptable range
 - Returns current Date object
 - Returns valid ISO 8601 string
 - Implements Clock interface
 
 ### TestClock Tests (22 passing)
+
 - **Construction** (4): numeric, Date, ISO string, default
 - **Time Retrieval** (3): timestamp, Date, ISO string
 - **Time Manipulation** (6): advance, setTime, reset with various formats
@@ -321,6 +339,7 @@ test('circuit breaker recovers after timeout', () => {
 - **Practical Scenarios** (4): expiry, timeout, backoff, circuit breaker
 
 ### Global Clock Management Tests (5 passing)
+
 - Default to SystemClock
 - Custom clock injection
 - Reset to SystemClock
@@ -328,6 +347,7 @@ test('circuit breaker recovers after timeout', () => {
 - Global updates
 
 ### Factory & Interface Tests (5 passing)
+
 - createTestClock factory
 - createSystemClock factory
 - Polymorphic usage
@@ -342,7 +362,7 @@ test('circuit breaker recovers after timeout', () => {
 ✅ **Type Safe**: Clock interface enforced by TypeScript  
 ✅ **Zero Production Overhead**: SystemClock is passthrough to Date  
 ✅ **Flexible**: Supports global injection and dependency injection  
-✅ **Migration Friendly**: Works alongside existing Date usage  
+✅ **Migration Friendly**: Works alongside existing Date usage
 
 ## Performance Characteristics
 
