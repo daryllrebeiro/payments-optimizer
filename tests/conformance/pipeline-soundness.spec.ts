@@ -50,6 +50,11 @@ describe('Task 0.4 — MoneySchema rejects negative amounts', () => {
     const result = MoneySchema.safeParse({ amountMinor: 100, currency: 'INR' });
     expect(result.success).toBe(true);
   });
+
+  it('zero-cart path: zero total accepted and handled without crash', () => {
+    const zero = MoneySchema.safeParse({ amountMinor: 0, currency: 'INR' });
+    expect(zero.success).toBe(true);
+  });
 });
 
 describe('Task 0.5 — cart quantity constraints', () => {

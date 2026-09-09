@@ -40,7 +40,8 @@ export class CartMonitor {
         childList: true,
         subtree: true,
         attributes: true,
-        attributeFilter: ['class', 'style', 'data-*'],
+        // Fix F15: 'data-*' is not a valid attributeFilter wildcard.
+        attributeFilter: ['class', 'style', 'data-price', 'data-cart-total', 'data-quantity'],
       });
 
       // Also monitor URL changes for SPA navigation

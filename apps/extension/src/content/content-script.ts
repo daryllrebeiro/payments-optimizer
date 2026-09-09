@@ -24,11 +24,13 @@ import type {
 import { serializeCart } from '../types/messages.js';
 
 /**
- * Sanitizes DOM content by removing potentially dangerous elements
- * @param html - Raw HTML string to sanitize
- * @returns Sanitized HTML string
+ * Fix F17: size/truncation hygiene for DOM snapshots — NOT security
+ * sanitization. This function does not provide security sanitization
+ * (no inner-HTML sink consumer exists downstream); it strips
+ * active content and bounds page-HTML size. Do not rely on it as an XSS
+ * boundary.
  */
-function sanitizeDomContent(html: string): string {
+function stripActiveDomContent(html: string): string {
   // Remove script tags and their content
   let sanitized = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
 
@@ -60,7 +62,7 @@ function truncateDomContent(html: string): string {
 async function run(): Promise<void> {
   // Extract and sanitize DOM content
   let rawHtml = document.documentElement.outerHTML;
-  rawHtml = sanitizeDomContent(rawHtml);
+  rawHtml = stripActiveDomContent(rawHtml);
   rawHtml = truncateDomContent(rawHtml);
 
   const context: PageContext = {
@@ -227,16 +229,21 @@ function setupCartUpdateObserver(): void {
   cartUpdateObserver = new MutationObserver(async (mutations) => {
     for (const mutation of mutations) {
       if (mutation.type === 'childList' || mutation.type === 'attributes') {
-        // Re-extract cart and send for optimization
+        // Fix F15: observer re-extraction uses the same
+        // strip+truncate path as initial load, so page-HTML size is
+        // bounded on every mutation, not just the first pass.
         try {
+          const stub = truncateDomContent(
+            stripActiveDomContent(document.documentElement.outerHTML)
+          );
           const adapter = getAdapterForContext({
             url: window.location.href,
-            domContentStub: document.documentElement.outerHTML,
+            domContentStub: stub,
           });
           if (adapter.canHandle({ url: window.location.href })) {
             const cart = await adapter.extractCart({
               url: window.location.href,
-              domContentStub: document.documentElement.outerHTML,
+              domContentStub: stub,
             });
             if (cart.total.amountMinor > 0n) {
               await sendCartWithRateLimit(cart);
@@ -249,11 +256,14 @@ function setupCartUpdateObserver(): void {
     }
   });
 
+  // Fix F15: 'data-*' is not a valid MutationObserver attributeFilter
+  // wildcard — list the concrete data attributes adapters care about.
+  // A data-price mutation must trigger re-extraction (regression test).
   cartUpdateObserver.observe(body, {
     childList: true,
     attributes: true,
     subtree: true,
-    attributeFilter: ['class', 'style', 'data-*'],
+    attributeFilter: ['class', 'style', 'data-price', 'data-cart-total', 'data-quantity'],
   });
 
   // Stop observer after 15 minutes to prevent memory leaks
