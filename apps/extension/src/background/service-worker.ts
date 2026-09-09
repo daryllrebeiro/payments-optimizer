@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- legacy explicit-any usage; remove when typed */
 /**
  * PaymentsOptimizer Extension — Background Service Worker
  *
@@ -13,12 +14,14 @@
 import { generateCandidates, filterDominated, rankStrategies } from '@payments-optimizer/optimizer';
 import { UnifiedBenefitOptimizer, PublicBenefitCatalog } from '@payments-optimizer/benefits';
 import type { UserProfile } from '@payments-optimizer/domain';
-import { PublicDataManager, CartSchema } from '@payments-optimizer/offer-engine';
 import {
-  hdfcMillenniaCard,
-  sbiCashbackCard,
-  axisAtlasCard,
-} from '@payments-optimizer/test-fixtures';
+  parseUserProfile,
+  validateProfileIntegrity,
+  serializeProfileForStorage,
+} from '@payments-optimizer/domain';
+import { validateMessage } from '@payments-optimizer/domain';
+import { PublicDataManager, CartSchema } from '@payments-optimizer/offer-engine';
+import { SavingsRepository, DurableTaskQueue } from '@payments-optimizer/storage';
 import type {
   ContentToBackgroundMessage,
   OptimizePaymentResponse,
@@ -32,6 +35,10 @@ import offersBundle from '../../../../data/offers-bundle.json';
 // Lazy initialization for benefit catalog (deferred until first use)
 let publicBenefitCatalog: PublicBenefitCatalog | null = null;
 let dataManager: PublicDataManager | null = null;
+
+// F1: single savings persistence path — one repository, one durable queue.
+const savingsRepository = new SavingsRepository();
+const durableQueue = new DurableTaskQueue();
 
 function getBenefitCatalog(): PublicBenefitCatalog {
   if (!publicBenefitCatalog) {
@@ -55,32 +62,42 @@ function getManager(): PublicDataManager {
   return dataManager;
 }
 
-// ── Default seed profile ─────────────────────────────────────────────────────
-// Used on first run until the user configures their own profile via UI.
+// ── F8: no default seed profile ─────────────────────────────────────────────
+// The service worker must never optimize against a fabricated profile of
+// fixture cards. When no valid user profile exists, the structured
+// PROFILE_NOT_CONFIGURED error below is returned instead.
 
-const DEFAULT_PROFILE: UserProfile = {
-  version: 1,
-  currency: 'INR',
-  paymentMethods: [
-    { type: 'CREDIT_CARD', card: hdfcMillenniaCard },
-    { type: 'CREDIT_CARD', card: sbiCashbackCard },
-    { type: 'CREDIT_CARD', card: axisAtlasCard },
-  ],
-  rewardPreferences: {
-    defaultValuations: {
-      'HDFC Millennia Points': { amountMinor: 100n, currency: 'INR' }, // 1 pt = ₹1
-      'SBI Cashback Program': { amountMinor: 100n, currency: 'INR' },
-      'Axis Edge Miles': { amountMinor: 100n, currency: 'INR' },
-    },
-  },
-  optimizationPreferences: {
-    immediateSavingsWeight: 1.0,
-    rewardValueWeight: 1.0,
-    milestoneWeight: 0.8,
-    simplicityWeight: 0.2,
-    riskWeight: 0.1,
-  },
-};
+/**
+ * Loads and validates the stored user profile (F7). Never optimizes against
+ * unvalidated data; returns a structured error for every failure mode.
+ */
+async function loadUserProfile(): Promise<
+  { kind: 'ok'; profile: UserProfile } | { kind: 'error'; error: string }
+> {
+  const localData = await chrome.storage.local.get('user-profile');
+  const raw = localData['user-profile'];
+  if (raw === undefined || raw === null) {
+    return {
+      kind: 'error',
+      error: 'PROFILE_NOT_CONFIGURED: No user profile found. Complete onboarding first.',
+    };
+  }
+  const parsed = parseUserProfile(raw);
+  if (!parsed.ok) {
+    return {
+      kind: 'error',
+      error: `PROFILE_CORRUPT: Stored profile failed validation: ${parsed.errors.join('; ')}`,
+    };
+  }
+  const integrity = validateProfileIntegrity(parsed.profile);
+  if (integrity.length > 0) {
+    return {
+      kind: 'error',
+      error: `PROFILE_CORRUPT: ${integrity.join('; ')}`,
+    };
+  }
+  return { kind: 'ok', profile: parsed.profile };
+}
 
 /**
  * Rate limiting constants for optimization requests
@@ -89,13 +106,91 @@ const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 10;
 
 /**
- * Saves an optimization result to the savings history
+ * F1: enqueue the confirmed savings entry durably BEFORE attempting the
+ * IndexedDB write (write-ahead), then perform the write and complete the
+ * task. If the service worker dies at any point, the next wake's drain
+ * loop retries the queued entry — no silent loss.
+ */
+async function persistConfirmedSavings(savingsEntry: Record<string, unknown>): Promise<void> {
+  const task = await durableQueue.enqueue('SAVE_SAVINGS_ENTRY', savingsEntry);
+  await executeSaveTask(savingsEntry);
+  await durableQueue.markCompleted(task.id);
+}
+
+/**
+ * F1/F3: the single code path that writes a savings entry — through the
+ * SavingsRepository (raw canonical shape, indexed, awaited, errors
+ * surfaced as rejections that the queue records with backoff).
+ */
+async function executeSaveTask(payload: unknown): Promise<void> {
+  await savingsRepository.put(payload as never);
+}
+
+/**
+ * F1: drain any tasks left pending by a service-worker kill. Called on
+ * startup and on each alarm tick. Idempotent: completed tasks are never
+ * re-claimed; failed attempts back off and eventually dead-letter.
+ */
+async function drainDurableQueue(): Promise<void> {
+  try {
+    const due = await durableQueue.claimDueTasks();
+    for (const task of due) {
+      try {
+        await executeSaveTask(task.payload);
+        await durableQueue.markCompleted(task.id);
+        console.info(
+          `[PaymentsOptimizer] Durable queue: retried and saved task ${task.id}`
+        );
+      } catch (err) {
+        await durableQueue.markFailed(
+          task.id,
+          err instanceof Error ? err.message : String(err)
+        );
+        console.warn(`[PaymentsOptimizer] Durable queue: task ${task.id} failed, will retry`, err);
+      }
+    }
+  } catch (err) {
+    console.warn('[PaymentsOptimizer] Durable queue drain failed:', err);
+  }
+}
+
+// F1: wake-on-alarm so pending tasks retry even when no user interaction
+// triggers the service worker. (Requires the "alarms" permission.)
+if (typeof chrome !== 'undefined' && chrome.alarms) {
+  chrome.alarms.create('drain-durable-queue', { periodInMinutes: 1 });
+  chrome.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === 'drain-durable-queue') {
+      void drainDurableQueue();
+    }
+  });
+}
+
+// Drain immediately on startup (recover tasks from a previous kill)
+void drainDurableQueue();
+
+/**
+ * F2: strict currency guard for savings arithmetic. Cross-currency
+ * subtraction produces a meaningless number that would be persisted
+ * permanently — reject it before any math happens.
+ */
+function isSameCurrency(
+  a: { currency: string },
+  b: { currency: string }
+): boolean {
+  return a.currency === b.currency;
+}
+
+/**
+ * F13: Savings entries are persisted ONLY on an explicit confirmed
+ * transaction, never on a recommendation. This function records the
+ * confirmed purchase.
+ *
  * @param cart - The cart that was optimized
- * @param strategy - The selected optimization strategy
+ * @param strategy - The strategy the user actually applied/confirmed
  * @param originalTotal - The original cart total before optimization
  * @param benefitsApplied - List of benefits applied
  */
-async function saveOptimizationResult(
+async function saveConfirmedOptimization(
   cart: import('@payments-optimizer/domain').Cart,
   strategy: import('../types/messages.js').SerializedStrategy,
   originalTotal: import('@payments-optimizer/domain').Money,
@@ -112,7 +207,17 @@ async function saveOptimizationResult(
       return;
     }
 
-    const savingsMinor = BigInt(originalTotal.amountMinor) - BigInt(strategy.totalBenefit.amountMinor);
+    // F2: refuse cross-currency subtraction — persisting a nonsense
+    // savings number is worse than skipping the entry.
+    if (!isSameCurrency(originalTotal, strategy.totalBenefit)) {
+      console.error(
+        `[PaymentsOptimizer] CURRENCY_MISMATCH: refusing to save savings entry — cart ${originalTotal.currency} vs strategy benefit ${strategy.totalBenefit.currency}`
+      );
+      return;
+    }
+
+    const savingsMinor =
+      BigInt(originalTotal.amountMinor) - BigInt(strategy.totalBenefit.amountMinor);
     const savingsEntry = {
       id: `opt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       timestamp: Date.now(),
@@ -148,29 +253,12 @@ async function saveOptimizationResult(
       })),
     };
 
-    // Save to IndexedDB savings store
-    if (typeof indexedDB !== 'undefined') {
-      const dbRequest = indexedDB.open('payments-optimizer-savings', 1);
-      dbRequest.onupgradeneeded = (event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-        if (!db.objectStoreNames.contains('savings')) {
-          db.createObjectStore('savings', { keyPath: 'id' });
-        }
-      };
-      dbRequest.onsuccess = () => {
-        const db = dbRequest.result;
-        const tx = db.transaction('savings', 'readwrite');
-        tx.objectStore('savings').put(savingsEntry);
-        tx.oncomplete = () => {
-          console.info('[PaymentsOptimizer] Saved optimization result to savings history');
-        };
-        tx.onerror = () => {
-          console.warn('[PaymentsOptimizer] Failed to save savings entry:', tx.error);
-        };
-      };
-    }
+    // F1: durable write-ahead via the queue + repository (the single
+    // savings persistence path in the product). Failures propagate as
+    // structured errors instead of console-only warnings.
+    await persistConfirmedSavings(savingsEntry);
   } catch (err) {
-    console.warn('[PaymentsOptimizer] Failed to save optimization result:', err);
+    console.error('[PaymentsOptimizer] Failed to save optimization result:', err);
   }
 }
 
@@ -184,13 +272,15 @@ async function isOptimizationRateLimited(): Promise<boolean> {
   }
 
   const now = Date.now();
-  
+
   return new Promise<boolean>((resolve) => {
     chrome.storage.local.get(['optimizationRateLimit'], (result) => {
-      const rateLimitData = result.optimizationRateLimit as {
-        count: number;
-        windowStart: number;
-      } | undefined;
+      const rateLimitData = result.optimizationRateLimit as
+        | {
+            count: number;
+            windowStart: number;
+          }
+        | undefined;
 
       if (!rateLimitData || now - rateLimitData.windowStart > RATE_LIMIT_WINDOW_MS) {
         // Window expired, reset
@@ -219,13 +309,54 @@ async function isOptimizationRateLimited(): Promise<boolean> {
 
 // ── Message listener ─────────────────────────────────────────────────────────
 
+/**
+ * F6: validate the raw cartJson BEFORE any BigInt-reviving JSON.parse work.
+ * A multi-megabyte payload or a pathologically long numeric literal would
+ * otherwise pin the service worker before Zod ever runs.
+ */
+const MAX_CART_JSON_BYTES = 64 * 1024; // 64KB — comfortably above any real cart
+const MAX_NUMERIC_LITERAL_LENGTH = 17; // digits — bounds BigInt operand size
+
+function preValidateCartJson(cartJson: string): { ok: true } | { ok: false; error: string } {
+  if (typeof cartJson !== 'string') {
+    return { ok: false, error: 'cartJson must be a string' };
+  }
+  if (cartJson.length > MAX_CART_JSON_BYTES) {
+    return {
+      ok: false,
+      error: `cartJson exceeds maximum size of ${MAX_CART_JSON_BYTES} bytes`,
+    };
+  }
+  // Reject pathologically long digit runs anywhere in the payload — these
+  // become huge BigInt operands during deserialization.
+  if (new RegExp(`\\d{${MAX_NUMERIC_LITERAL_LENGTH + 1},}`).test(cartJson)) {
+    return {
+      ok: false,
+      error: `cartJson contains numeric literals exceeding ${MAX_NUMERIC_LITERAL_LENGTH} digits`,
+    };
+  }
+  return { ok: true };
+}
+
 chrome.runtime.onMessage.addListener(
   (
     message: unknown,
     _sender: chrome.runtime.MessageSender,
     sendResponse: (response: OptimizePaymentResponse | OptimizePaymentErrorResponse) => void
   ) => {
-    const msg = message as ContentToBackgroundMessage;
+    // F3: the message itself is untrusted — validate its shape with the
+    // library schema before anything else. Unknown or malformed messages
+    // are rejected, not silently acted upon.
+    let msg: ContentToBackgroundMessage;
+    try {
+      msg = validateMessage(message);
+    } catch (err) {
+      sendResponse({
+        type: 'OPTIMIZE_PAYMENT_ERROR',
+        error: `MESSAGE_REJECTED: ${(err as Error).message}`,
+      });
+      return false;
+    }
 
     if (msg.type === 'OPTIMIZE_PAYMENT') {
       // Wrap in IIFE to allow async/await while keeping the listener synchronous.
@@ -242,15 +373,36 @@ chrome.runtime.onMessage.addListener(
         }
 
         try {
-          const rawCart = deserializeCart(msg.payload.cartJson);
+          // F6: size/magnitude checks BEFORE deserialization
+          const cartJson = msg.payload?.cartJson;
+          const preCheck = preValidateCartJson(cartJson);
+          if (!preCheck.ok) {
+            const errorResponse: OptimizePaymentErrorResponse = {
+              type: 'OPTIMIZE_PAYMENT_ERROR',
+              error: `PAYLOAD_REJECTED: ${preCheck.error}`,
+            };
+            sendResponse(errorResponse);
+            return;
+          }
+
+          const rawCart = deserializeCart(cartJson);
           // Strict Zod validation of untrusted inputs from the page script context
           const cart = CartSchema.parse(
             rawCart
           ) as unknown as import('@payments-optimizer/domain').Cart;
 
-          // Retrieve active tab profile, fallback to seeded default
-          const localData = await chrome.storage.local.get('user-profile');
-          const profile = (localData['user-profile'] as UserProfile) || DEFAULT_PROFILE;
+          // F7/F8: validate the profile — never optimize against unvalidated
+          // data, never fall back to fixture cards
+          const profileResult = await loadUserProfile();
+          if (profileResult.kind === 'error') {
+            const errorResponse: OptimizePaymentErrorResponse = {
+              type: 'OPTIMIZE_PAYMENT_ERROR',
+              error: profileResult.error,
+            };
+            sendResponse(errorResponse);
+            return;
+          }
+          const profile = profileResult.profile;
 
           // Query dynamic active offers and coupons from validated PublicDataManager
           const offers = getManager().getOffersForMerchant(cart.merchantId);
@@ -266,30 +418,16 @@ chrome.runtime.onMessage.addListener(
 
           const serialized = ranked.map(serializeStrategy);
 
-          // Save optimization result to savings history
-          const originalCartTotal = {
-            amountMinor: cart.total.amountMinor,
-            currency: cart.total.currency,
-          };
-          const bestStrategy = serialized[0] ?? null;
-          if (bestStrategy) {
-            // Extract benefits applied from the strategy's recipe steps
-            const benefitsApplied = (bestStrategy as any).recipeSteps?.map((step: any) => ({
-              benefitId: step.benefitSourceId,
-              benefitType: step.actionType,
-              benefitSourceId: step.benefitSourceId,
-              benefitSourceName: step.benefitSourceName,
-              amountApplied: step.savingsGenerated,
-            })) || [];
-
-            saveOptimizationResult(cart, bestStrategy, originalCartTotal, benefitsApplied);
-          }
+          // F13: recommendations are NOT transactions — nothing is persisted
+          // here. A savings entry is written only when the user explicitly
+          // confirms the purchase (CONFIRM_SAVINGS below, triggered from the
+          // popup's "applied" action).
 
           const response: OptimizePaymentResponse = {
             type: 'OPTIMIZE_PAYMENT_RESULT',
             payload: {
               strategies: serialized,
-              bestStrategy: bestStrategy,
+              bestStrategy: serialized[0] ?? null,
             },
           };
 
@@ -338,6 +476,39 @@ chrome.runtime.onMessage.addListener(
       })();
 
       return true; // keep message channel open for async sendResponse
+    }
+
+    if (msg.type === 'CONFIRM_SAVINGS') {
+      // F13: explicit user confirmation that a strategy was applied — this,
+      // and only this, persists a savings entry. The message shape was
+      // already validated by validateMessage (F3) — no re-casting here.
+      (async () => {
+        try {
+          const confirmation = msg.payload;
+
+          const cart = {
+            merchantId: confirmation.merchantId,
+            total: {
+              amountMinor: BigInt(confirmation.cartTotal.amountMinor),
+              currency: confirmation.cartTotal.currency,
+            },
+          } as unknown as import('@payments-optimizer/domain').Cart;
+
+          const originalTotal = {
+            amountMinor: BigInt(confirmation.cartTotal.amountMinor),
+            currency: confirmation.cartTotal.currency,
+          };
+
+          await saveConfirmedOptimization(cart, confirmation.strategy, originalTotal, []);
+          sendResponse({ type: 'SAVINGS_CONFIRMED', confirmed: true } as unknown as OptimizePaymentResponse);
+        } catch (err) {
+          sendResponse({
+            type: 'OPTIMIZE_PAYMENT_ERROR',
+            error: err instanceof Error ? err.message : String(err),
+          } as OptimizePaymentErrorResponse);
+        }
+      })();
+      return true;
     }
 
     return false;

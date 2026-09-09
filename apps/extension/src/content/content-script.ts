@@ -18,7 +18,6 @@
 import { detectMerchant, getAdapterForContext } from '@payments-optimizer/merchant-detector';
 import type { PageContext } from '@payments-optimizer/domain';
 import type {
-  ContentToBackgroundMessage,
   OptimizePaymentResponse,
   OptimizePaymentErrorResponse,
 } from '../types/messages.js';
@@ -32,16 +31,16 @@ import { serializeCart } from '../types/messages.js';
 function sanitizeDomContent(html: string): string {
   // Remove script tags and their content
   let sanitized = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-  
+
   // Remove style tags and their content
   sanitized = sanitized.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
-  
+
   // Remove event handlers (onXYZ attributes)
   sanitized = sanitized.replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, '');
-  
+
   // Remove javascript: URLs
   sanitized = sanitized.replace(/javascript:/gi, '');
-  
+
   return sanitized;
 }
 
@@ -63,7 +62,7 @@ async function run(): Promise<void> {
   let rawHtml = document.documentElement.outerHTML;
   rawHtml = sanitizeDomContent(rawHtml);
   rawHtml = truncateDomContent(rawHtml);
-  
+
   const context: PageContext = {
     url: window.location.href,
     domContentStub: rawHtml,
@@ -100,7 +99,7 @@ async function run(): Promise<void> {
   );
 
   // Step 3 — send to service worker
-  const message: ContentToBackgroundMessage = {
+  const message: import('../types/messages.js').OptimizePaymentMessageLegacy = {
     type: 'OPTIMIZE_PAYMENT',
     payload: {
       cart,
@@ -168,8 +167,10 @@ let cartUpdateObserver: MutationObserver | null = null;
 /**
  * Sends cart data for optimization to background service worker
  */
-async function sendCartForOptimization(cart: import('@payments-optimizer/domain').Cart): Promise<void> {
-  const message: ContentToBackgroundMessage = {
+async function sendCartForOptimization(
+  cart: import('@payments-optimizer/domain').Cart
+): Promise<void> {
+  const message: import('../types/messages.js').OptimizePaymentMessageLegacy = {
     type: 'OPTIMIZE_PAYMENT',
     payload: {
       cart,
@@ -204,7 +205,9 @@ async function sendCartForOptimization(cart: import('@payments-optimizer/domain'
 /**
  * Sends cart data for optimization if enough time has passed since last optimization
  */
-async function sendCartWithRateLimit(cart: import('@payments-optimizer/domain').Cart): Promise<void> {
+async function sendCartWithRateLimit(
+  cart: import('@payments-optimizer/domain').Cart
+): Promise<void> {
   const now = Date.now();
   if (now - lastOptimizationTime > CART_UPDATE_INTERVAL_MS) {
     lastOptimizationTime = now;

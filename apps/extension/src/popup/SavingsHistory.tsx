@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import type { SavingsEntry } from '@payments-optimizer/domain';
+import type { SavingsEntry } from '@payments-optimizer/storage';
 import type { Currency } from '@payments-optimizer/domain';
 
 interface SavingsHistoryProps {
@@ -96,9 +96,7 @@ export default function SavingsHistory({ entries, currency }: SavingsHistoryProp
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                  <span style={{ fontWeight: 600, fontSize: '11px' }}>
-                    {entry.merchantId}
-                  </span>
+                  <span style={{ fontWeight: 600, fontSize: '11px' }}>{entry.merchantId}</span>
                   <span style={{ fontSize: '9px', color: 'var(--text-secondary)' }}>
                     {date.toLocaleDateString()}
                   </span>
@@ -117,7 +115,8 @@ export default function SavingsHistory({ entries, currency }: SavingsHistoryProp
                       color: '#22c55e',
                     }}
                   >
-                    +{currencySym}{savings.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    +{currencySym}
+                    {savings.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </span>
                 </div>
                 {entry.selectedStrategy.id && (

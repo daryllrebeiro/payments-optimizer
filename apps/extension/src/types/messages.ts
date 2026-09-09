@@ -1,17 +1,29 @@
 import type { Cart, PaymentStrategy } from '@payments-optimizer/domain';
+// F3: message types come from the library's validated schemas — the
+// extension no longer hand-declares a parallel set of message interfaces.
+import type {
+  ContentToBackgroundMessage,
+  ConfirmSavingsMessage,
+  OptimizePaymentMessage,
+} from '@payments-optimizer/domain';
+// F3: the wire codec is the library's DomainSerializer — namespaced
+// {"__type":"bigint","value":"..."} encoding (F16: cannot collide with a
+// natural string value like "100n"), shared with every other consumer of
+// domain serialization instead of a hand-rolled per-extension format.
+import { DomainSerializer } from '@payments-optimizer/domain';
+
+export type { ContentToBackgroundMessage, ConfirmSavingsMessage, OptimizePaymentMessage };
 
 // ── Outbound: Content Script → Service Worker ────────────────────────────────
 
-export interface OptimizePaymentMessage {
+export interface OptimizePaymentMessageLegacy {
   type: 'OPTIMIZE_PAYMENT';
   payload: {
     cart: Cart;
-    /** Serialised Cart — bigints are stringified with trailing 'n' */
+    /** Serialised Cart — bigints encoded as {"__bigint__": "123"} (F16) */
     cartJson: string;
   };
 }
-
-export type ContentToBackgroundMessage = OptimizePaymentMessage;
 
 // ── Inbound: Service Worker → Content Script ─────────────────────────────────
 
@@ -30,6 +42,8 @@ export interface SerializedRecipeStep {
   stepNumber: number;
   phase: 'BEFORE_PAYMENT' | 'AT_PAYMENT' | 'POST_PAYMENT';
   actionType: string;
+  /** F9: stable joinable IDs carried through serialization */
+  benefitSourceId: string;
   benefitSourceName: string;
   description: string;
   amountApplied: SerializedMoney;
@@ -65,24 +79,18 @@ export interface OptimizePaymentErrorResponse {
   error: string;
 }
 
-export type BackgroundToContentMessage = OptimizePaymentResponse | OptimizePaymentErrorResponse;
+export type BackgroundToContentMessage =
+  | OptimizePaymentResponse
+  | OptimizePaymentErrorResponse;
 
 // ── Serialization helpers ────────────────────────────────────────────────────
 
 export function serializeCart(cart: Cart): string {
-  return JSON.stringify(cart, (_key, value) => {
-    if (typeof value === 'bigint') return `${value.toString()}n`;
-    return value;
-  });
+  return DomainSerializer.serializeSimple(cart);
 }
 
 export function deserializeCart(json: string): Cart {
-  return JSON.parse(json, (_key, value) => {
-    if (typeof value === 'string' && /^-?\d+n$/.test(value)) {
-      return BigInt(value.slice(0, -1));
-    }
-    return value;
-  }) as Cart;
+  return DomainSerializer.deserializeSimple<Cart>(json);
 }
 
 export function serializeStrategy(strategy: PaymentStrategy): SerializedStrategy {
@@ -95,10 +103,14 @@ export function serializeStrategy(strategy: PaymentStrategy): SerializedStrategy
     import('@payments-optimizer/domain').UnifiedTransactionStrategy
   >;
 
+  // F9: benefitSourceId is a required field of StrategyRecipeStep in the
+  // domain model — carry it through so the savings ledger gets a real,
+  // stable join key instead of `undefined`.
   const recipeSteps: SerializedRecipeStep[] | undefined = unified.recipeSteps?.map((step) => ({
     stepNumber: step.stepNumber,
     phase: step.phase,
     actionType: step.actionType,
+    benefitSourceId: step.benefitSourceId,
     benefitSourceName: step.benefitSourceName,
     description: step.description,
     amountApplied: m(step.amountApplied),

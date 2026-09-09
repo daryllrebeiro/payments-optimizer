@@ -9,7 +9,7 @@ export function announce(message: string, priority: 'polite' | 'assertive' = 'po
   const announcer = document.getElementById('sr-announcer') || createAnnouncer();
   announcer.setAttribute('aria-live', priority);
   announcer.textContent = message;
-  
+
   // Clear after announcement
   setTimeout(() => {
     announcer.textContent = '';
@@ -55,13 +55,13 @@ export function createFocusTrap(container: HTMLElement): () => void {
   const focusableElements = container.querySelectorAll<HTMLElement>(
     'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
   );
-  
+
   const firstElement = focusableElements[0];
   const lastElement = focusableElements[focusableElements.length - 1];
-  
+
   const handleTabKey = (e: KeyboardEvent) => {
     if (e.key !== 'Tab') return;
-    
+
     if (e.shiftKey) {
       if (document.activeElement === firstElement) {
         e.preventDefault();
@@ -74,10 +74,10 @@ export function createFocusTrap(container: HTMLElement): () => void {
       }
     }
   };
-  
+
   container.addEventListener('keydown', handleTabKey);
   firstElement?.focus();
-  
+
   return () => {
     container.removeEventListener('keydown', handleTabKey);
   };
@@ -90,7 +90,7 @@ export function formatCurrencyForSR(amount: bigint, currency: string): string {
   const major = amount / 100n;
   const minor = amount % 100n;
   const formatted = `${major}.${minor.toString().padStart(2, '0')}`;
-  
+
   switch (currency) {
     case 'INR':
       return `${formatted} rupees`;
@@ -114,7 +114,7 @@ export const ARIA_LABELS = {
   closeModal: 'Close dialog',
   previousStep: 'Go to previous step',
   nextStep: 'Go to next step',
-  
+
   // Actions
   addCard: 'Add new credit card',
   removeCard: 'Remove credit card',
@@ -122,7 +122,7 @@ export const ARIA_LABELS = {
   addVoucher: 'Add new voucher',
   exportProfile: 'Export your profile data',
   importProfile: 'Import profile data',
-  
+
   // Views
   dashboard: 'View dashboard',
   benefits: 'View benefits and memberships',
@@ -130,7 +130,7 @@ export const ARIA_LABELS = {
   savings: 'View savings history',
   settings: 'View settings',
   diagnostics: 'View diagnostics',
-  
+
   // Status
   loading: 'Loading',
   success: 'Success',

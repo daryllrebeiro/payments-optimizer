@@ -23,10 +23,7 @@ export interface ConvertedMoney {
   timestamp: number;
 }
 
-export function convertMoney(
-  money: Money,
-  targetCurrency: Currency
-): Promise<ConvertedMoney> {
+export function convertMoney(money: Money, targetCurrency: Currency): Promise<ConvertedMoney> {
   const sourceRate = FIXED_RATES[money.currency];
   const targetRate = FIXED_RATES[targetCurrency];
   const rate = sourceRate / targetRate;
@@ -105,7 +102,14 @@ function CurrencyConverter({ amountMinor, currency, onConverted }: CurrencyConve
       className="glass-panel"
       style={{ padding: '16px', borderRadius: '8px', marginBottom: '16px' }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '12px',
+        }}
+      >
         <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>urrency Conversion</h3>
         <CurrencySelector value={targetCurrency} onChange={setTargetCurrency} />
       </div>
@@ -135,7 +139,11 @@ function CurrencyConverter({ amountMinor, currency, onConverted }: CurrencyConve
               Original Amount ({currency})
             </div>
             <div style={{ fontSize: '20px', fontWeight: 700, color: '#3b82f6' }}>
-              {currency === 'INR' ? '₹' : currency + ' '}{amountMajor.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {currency === 'INR' ? '₹' : currency + ' '}
+              {amountMajor.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
             </div>
           </div>
 
@@ -151,7 +159,11 @@ function CurrencyConverter({ amountMinor, currency, onConverted }: CurrencyConve
               Converted Amount ({targetCurrency})
             </div>
             <div style={{ fontSize: '20px', fontWeight: 700, color: '#22c55e' }}>
-              {targetCurrency === 'INR' ? '₹' : targetCurrency + ' '}{convertedMajor.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {targetCurrency === 'INR' ? '₹' : targetCurrency + ' '}
+              {convertedMajor.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
             </div>
             {converted && (
               <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
@@ -178,7 +190,11 @@ export default function MultiCurrencyDashboard({
     <div className="slide-in">
       <div
         className="glass-panel"
-        style={{ padding: '16px', marginBottom: '16px', borderLeft: '4px solid var(--brand-primary)' }}
+        style={{
+          padding: '16px',
+          marginBottom: '16px',
+          borderLeft: '4px solid var(--brand-primary)',
+        }}
       >
         <h2 className="section-title" style={{ fontSize: '16px', marginBottom: '4px' }}>
           🌍 Multi-Currency Dashboard
@@ -195,10 +211,7 @@ export default function MultiCurrencyDashboard({
       />
 
       {convertedTotal && (
-        <div
-          className="glass-panel"
-          style={{ padding: '16px', borderRadius: '8px' }}
-        >
+        <div className="glass-panel" style={{ padding: '16px', borderRadius: '8px' }}>
           <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '8px' }}>
             Currency Conversion Rate
           </h3>
@@ -206,7 +219,9 @@ export default function MultiCurrencyDashboard({
             Rate source: Fixed rates (cached)
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>{originalCurrency} to {convertedTotal.currency}</span>
+            <span>
+              {originalCurrency} to {convertedTotal.currency}
+            </span>
             <span style={{ fontWeight: 600, color: 'var(--brand-primary)' }}>
               1 {originalCurrency} = {convertedTotal.rate.toFixed(4)} {convertedTotal.currency}
             </span>

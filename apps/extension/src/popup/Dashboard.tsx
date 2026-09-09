@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { UserProfile, Cart } from '@payments-optimizer/domain';
 import { generateCandidates, filterDominated, rankStrategies } from '@payments-optimizer/optimizer';
-import { hdfcInstantDiscountOffer, amazonCoupon } from '@payments-optimizer/test-fixtures';
+import { demoInstantDiscountOffer, demoCoupon } from '../data/card-catalog.js';
 import type { ActiveRecommendation } from './App.js';
 import { serializeStrategy, SerializedStrategy } from '../types/messages.js';
 import { LoadingState } from './LoadingState.js';
@@ -47,7 +47,9 @@ export default function Dashboard({ profile, recommendation }: DashboardProps) {
     try {
       const { isValidApiKey } = await import('./ai-explain.js');
       if (!isValidApiKey(apiKey)) {
-        setExplainError('Invalid API Key format. Please check that you entered a valid Gemini API key.');
+        setExplainError(
+          'Invalid API Key format. Please check that you entered a valid Gemini API key.'
+        );
         return;
       }
     } catch (err) {
@@ -144,12 +146,9 @@ export default function Dashboard({ profile, recommendation }: DashboardProps) {
     };
 
     // Run core engine optimizer
-    const candidates = generateCandidates(
-      cart,
-      profile,
-      [hdfcInstantDiscountOffer],
-      [amazonCoupon]
-    );
+    const candidates = generateCandidates(cart, profile, [demoInstantDiscountOffer], [
+      demoCoupon,
+    ]);
     const pruned = filterDominated(candidates);
     const ranked = rankStrategies(pruned, profile.optimizationPreferences);
 
@@ -376,11 +375,7 @@ export default function Dashboard({ profile, recommendation }: DashboardProps) {
           <button className="btn btn-primary" style={{ flex: 1 }} onClick={openSimulator}>
             Open What-If Simulator
           </button>
-          <button
-            className="btn btn-secondary"
-            style={{ flex: 1 }}
-            onClick={handleExportStrategy}
-          >
+          <button className="btn btn-secondary" style={{ flex: 1 }} onClick={handleExportStrategy}>
             💾 Export Strategy
           </button>
         </div>

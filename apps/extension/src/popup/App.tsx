@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { UserProfile } from '@payments-optimizer/domain';
+import { parseUserProfile, serializeProfileForStorage } from '@payments-optimizer/domain';
+import { SavingsRepository, type SavingsEntry } from '@payments-optimizer/storage';
 import Onboarding from './Onboarding.js';
 import Dashboard from './Dashboard.js';
 import CardCatalogManager from './CardCatalogManager.js';
@@ -14,43 +16,24 @@ export type ViewType = 'DASHBOARD' | 'BENEFITS' | 'CARDS' | 'SETTINGS' | 'DIAGNO
 
 // Savings view component (local to App.tsx)
 function SavingsView({ profile }: { profile: UserProfile }) {
-  const [savingsEntries, setSavingsEntries] = React.useState<import('@payments-optimizer/domain').SavingsEntry[]>([]);
+  // F1: the popup reads through the SAME SavingsRepository the service
+  // worker writes through — one code path owns this store. The entry type
+  // is the storage package's persisted shape (string amountMinor).
+  const [savingsEntries, setSavingsEntries] = React.useState<SavingsEntry[]>([]);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
     async function loadSavings() {
+      // F1: the popup reads through the SAME SavingsRepository the service
+      // worker writes through — exactly one code path owns this store. The
+      // previous hand-rolled indexedDB.open() here was the second writer.
+      const repository = new SavingsRepository();
       try {
-        // Try to load from indexedDB first
-        if (typeof indexedDB !== 'undefined') {
-          const db = indexedDB.open('payments-optimizer-savings', 1);
-          db.onupgradeneeded = (event) => {
-            const database = (event.target as IDBOpenDBRequest).result;
-            if (!database.objectStoreNames.contains('savings')) {
-              database.createObjectStore('savings', { keyPath: 'id' });
-            }
-          };
-          db.onsuccess = (event) => {
-            const database = (event.target as IDBOpenDBRequest).result;
-            const transaction = database.transaction('savings', 'readonly');
-            const store = transaction.objectStore('savings');
-            const request = store.getAll();
-            
-            request.onsuccess = () => {
-              setSavingsEntries(request.result || []);
-              setLoading(false);
-            };
-            request.onerror = () => {
-              setLoading(false);
-            };
-          };
-          db.onerror = () => {
-            setLoading(false);
-          };
-        } else {
-          setLoading(false);
-        }
+        const entries = await repository.list();
+        setSavingsEntries(entries);
       } catch (err) {
         console.error('[PaymentsOptimizer] Failed to load savings:', err);
+      } finally {
         setLoading(false);
       }
     }
@@ -98,10 +81,18 @@ function SavingsView({ profile }: { profile: UserProfile }) {
         <>
           <SavingsSummary
             totalEntries={savingsEntries.length}
-            totalSaved={savingsEntries.reduce((sum, e) => sum + (Number(BigInt(e.savings.amountMinor)) / 100), 0)}
-            avgSavingsPerOrder={savingsEntries.length > 0 
-              ? savingsEntries.reduce((sum, e) => sum + (Number(BigInt(e.savings.amountMinor)) / 100), 0) / savingsEntries.length 
-              : 0}
+            totalSaved={savingsEntries.reduce(
+              (sum, e) => sum + Number(BigInt(e.savings.amountMinor)) / 100,
+              0
+            )}
+            avgSavingsPerOrder={
+              savingsEntries.length > 0
+                ? savingsEntries.reduce(
+                    (sum, e) => sum + Number(BigInt(e.savings.amountMinor)) / 100,
+                    0
+                  ) / savingsEntries.length
+                : 0
+            }
             merchantBreakdown={{}}
             currency={currency}
           />
@@ -116,9 +107,7 @@ function SavingsView({ profile }: { profile: UserProfile }) {
             marginBottom: '16px',
           }}
         >
-          <div style={{ fontSize: '48px', marginBottom: '12px' }}>
-            📊
-          </div>
+          <div style={{ fontSize: '48px', marginBottom: '12px' }}>📊</div>
           <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', color: 'var(--text-primary)' }}>
             No Savings Yet
           </h3>
@@ -149,7 +138,10 @@ export interface ActiveRecommendation {
 // Recommendation cache TTL - 10 minutes for offline fallback
 const RECOMMENDATION_CACHE_TTL_MS = 10 * 60 * 1000;
 
-const DEFAULT_PROFILE: UserProfile = {
+// Placeholder profile used for the pre-onboarding render only. F8: this is
+// NEVER persisted — no storage write happens until the user completes
+// onboarding, so no fabricated card data can ever be optimized against.
+const EMPTY_PROFILE: UserProfile = {
   version: 1,
   currency: 'INR',
   paymentMethods: [],
@@ -169,7 +161,7 @@ export default function App() {
   const [initialized, setInitialized] = useState(false);
   const [onboardingCompleted, setOnboardingCompleted] = useState(false);
   const [currentView, setCurrentView] = useState<ViewType>('DASHBOARD');
-  const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
+  const [profile, setProfile] = useState<UserProfile>(EMPTY_PROFILE);
   const [activeRecommendation, setActiveRecommendation] = useState<ActiveRecommendation | null>(
     null
   );
@@ -190,36 +182,33 @@ export default function App() {
           setOnboardingCompleted(true);
         }
 
+        // F7: validate on read — a corrupted profile must never reach the
+        // UI as if it were real data. F8: nothing is written when absent.
         if (localData['user-profile']) {
-          setProfile(localData['user-profile'] as UserProfile);
-        } else {
-          // Store default profile if not present
-          await chrome.storage.local.set({ 'user-profile': DEFAULT_PROFILE });
-          setProfile(DEFAULT_PROFILE);
+          const parsed = parseUserProfile(localData['user-profile']);
+          if (parsed.ok) {
+            setProfile(parsed.profile);
+          } else {
+            console.error(
+              '[PaymentsOptimizer] Stored profile failed validation — routing to onboarding:',
+              parsed.errors
+            );
+            setOnboardingCompleted(false);
+          }
         }
 
-        // 3. Load cached recommendation for offline fallback
-        const cachedRecommendation = localData['last-recommendation'] as ActiveRecommendation | undefined;
-        if (cachedRecommendation && Date.now() - cachedRecommendation.timestamp < RECOMMENDATION_CACHE_TTL_MS) {
+        // Load cached recommendation for offline fallback
+        const cachedRecommendation = localData['last-recommendation'] as
+          ActiveRecommendation | undefined;
+        if (
+          cachedRecommendation &&
+          Date.now() - cachedRecommendation.timestamp < RECOMMENDATION_CACHE_TTL_MS
+        ) {
           setActiveRecommendation(cachedRecommendation);
           console.info('[PaymentsOptimizer] Loaded cached recommendation for offline use');
         }
 
-        // 2. Fetch recommendations for the active browser tab
-
-        if (localData['onboarding-completed']) {
-          setOnboardingCompleted(true);
-        }
-
-        if (localData['user-profile']) {
-          setProfile(localData['user-profile'] as UserProfile);
-        } else {
-          // Store default profile if not present
-          await chrome.storage.local.set({ 'user-profile': DEFAULT_PROFILE });
-          setProfile(DEFAULT_PROFILE);
-        }
-
-        // 2. Fetch recommendations for the active browser tab
+        // Fetch recommendations for the active browser tab
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (tab?.id) {
           setActiveTabId(tab.id);
@@ -243,11 +232,22 @@ export default function App() {
 
   const handleOnboardingComplete = async (completedProfile: UserProfile) => {
     try {
+      // F7: validate before write. F8: this is the first storage write.
+      const parsed = parseUserProfile(completedProfile);
+      if (!parsed.ok) {
+        console.error(
+          '[PaymentsOptimizer] Refusing to persist invalid onboarding profile:',
+          parsed.errors
+        );
+        return;
+      }
       await chrome.storage.local.set({
         'onboarding-completed': true,
-        'user-profile': completedProfile,
+        // chrome.storage cannot structured-clone BigInt — persist the
+        // string-normalized shape (read path parses it back to bigint)
+        'user-profile': serializeProfileForStorage(parsed.profile),
       });
-      setProfile(completedProfile);
+      setProfile(parsed.profile);
       setOnboardingCompleted(true);
       setCurrentView('DASHBOARD');
     } catch (err) {
@@ -257,8 +257,20 @@ export default function App() {
 
   const handleUpdateProfile = async (updatedProfile: UserProfile) => {
     try {
-      await chrome.storage.local.set({ 'user-profile': updatedProfile });
-      setProfile(updatedProfile);
+      // F7: validate before write — reject invalid state rather than
+      // persisting it for every future read to trip over.
+      const parsed = parseUserProfile(updatedProfile);
+      if (!parsed.ok) {
+        console.error(
+          '[PaymentsOptimizer] Refusing to persist invalid profile update:',
+          parsed.errors
+        );
+        return;
+      }
+      await chrome.storage.local.set({
+        'user-profile': serializeProfileForStorage(parsed.profile),
+      });
+      setProfile(parsed.profile);
     } catch (err) {
       console.error('[PaymentsOptimizer] Failed to update profile:', err);
     }
@@ -298,7 +310,14 @@ export default function App() {
 
   // Memoize navigation buttons to prevent re-creation on each render
   const navButtons = useMemo(() => {
-    const views: ViewType[] = ['DASHBOARD', 'BENEFITS', 'CARDS', 'SAVINGS', 'SETTINGS', 'DIAGNOSTICS'];
+    const views: ViewType[] = [
+      'DASHBOARD',
+      'BENEFITS',
+      'CARDS',
+      'SAVINGS',
+      'SETTINGS',
+      'DIAGNOSTICS',
+    ];
     return views.map((view) => (
       <button
         key={view}
@@ -357,12 +376,14 @@ export default function App() {
           overflow: 'hidden',
         }}
       />
-      
+
       <header className="header" role="banner">
         <div className="brand-title" role="heading" aria-level={1}>
           PaymentsOptimizer
         </div>
-        <div className="header-meta" aria-label="Version 0.5.0">v0.5.0</div>
+        <div className="header-meta" aria-label="Version 0.5.0">
+          v0.5.0
+        </div>
       </header>
 
       <nav className="nav-bar" role="navigation" aria-label="Main navigation">

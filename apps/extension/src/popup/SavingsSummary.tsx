@@ -36,11 +36,12 @@ export default function SavingsSummary({
         >
           <div style={{ fontSize: '24px', fontWeight: 700, color: '#22c55e' }}>
             {currencySym}
-            {totalSaved.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {totalSaved.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
           </div>
-          <div style={{ fontSize: '10px', color: '#22c55e', marginTop: '4px' }}>
-            Total Saved
-          </div>
+          <div style={{ fontSize: '10px', color: '#22c55e', marginTop: '4px' }}>Total Saved</div>
         </div>
 
         <div
@@ -54,11 +55,12 @@ export default function SavingsSummary({
         >
           <div style={{ fontSize: '24px', fontWeight: 700, color: '#3b82f6' }}>
             {currencySym}
-            {avgSavingsPerOrder.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {avgSavingsPerOrder.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
           </div>
-          <div style={{ fontSize: '10px', color: '#3b82f6', marginTop: '4px' }}>
-            Avg Per Order
-          </div>
+          <div style={{ fontSize: '10px', color: '#3b82f6', marginTop: '4px' }}>Avg Per Order</div>
         </div>
       </div>
 
@@ -77,29 +79,29 @@ export default function SavingsSummary({
                 borderRadius: '6px',
               }}
             >
-              {Object.entries(merchantBreakdown).slice(0, 5).map(([merchantId, data]) => (
-                <div
-                  key={merchantId}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    padding: '6px 10px',
-                    fontSize: '11px',
-                    borderBottom: '1px solid var(--glass-border)',
-                  }}
-                >
-                  <span style={{ textTransform: 'capitalize' }}>{merchantId}</span>
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>
-                      {data.count} ops
-                    </span>
-                    <span style={{ fontWeight: 600, color: '#22c55e' }}>
-                      {currencySym}
-                      {data.totalSaved.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                    </span>
+              {Object.entries(merchantBreakdown)
+                .slice(0, 5)
+                .map(([merchantId, data]) => (
+                  <div
+                    key={merchantId}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      padding: '6px 10px',
+                      fontSize: '11px',
+                      borderBottom: '1px solid var(--glass-border)',
+                    }}
+                  >
+                    <span style={{ textTransform: 'capitalize' }}>{merchantId}</span>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>{data.count} ops</span>
+                      <span style={{ fontWeight: 600, color: '#22c55e' }}>
+                        {currencySym}
+                        {data.totalSaved.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
             </div>
           )}
         </div>

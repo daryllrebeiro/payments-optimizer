@@ -57,16 +57,18 @@ export default function Settings({ profile, onUpdateProfile }: SettingsProps) {
 
   const handleUpdateApiKey = async (key: string) => {
     setApiKey(key);
-    
+
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
       // Validate key format before storing
       const { isValidApiKey } = await import('./ai-explain.js');
-      
+
       if (key.trim() && !isValidApiKey(key.trim())) {
         // Store the key anyway for user to correct later, but show a warning
-        console.warn('API key format may be invalid. User should verify key at https://aistudio.google.com/');
+        console.warn(
+          'API key format may be invalid. User should verify key at https://aistudio.google.com/'
+        );
       }
-      
+
       chrome.storage.local.set({ geminiApiKey: key });
     }
   };

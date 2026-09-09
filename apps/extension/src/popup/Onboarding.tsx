@@ -4,7 +4,7 @@ import {
   hdfcMillenniaCard,
   sbiCashbackCard,
   axisAtlasCard,
-} from '@payments-optimizer/test-fixtures';
+} from '../data/card-catalog.js';
 
 interface OnboardingProps {
   onComplete: (profile: UserProfile) => void;

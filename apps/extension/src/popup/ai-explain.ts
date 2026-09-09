@@ -33,13 +33,15 @@ async function isRateLimited(): Promise<boolean> {
   }
 
   const now = Date.now();
-  
+
   return new Promise<boolean>((resolve) => {
     chrome.storage.local.get(['aiRateLimit'], (result) => {
-      const rateLimitData = result.aiRateLimit as {
-        count: number;
-        windowStart: number;
-      } | undefined;
+      const rateLimitData = result.aiRateLimit as
+        | {
+            count: number;
+            windowStart: number;
+          }
+        | undefined;
 
       if (!rateLimitData || now - rateLimitData.windowStart > RATE_LIMIT_WINDOW_MS) {
         // Window expired, reset
@@ -77,9 +79,11 @@ export async function generateAIExplanation(input: ExplainInput, apiKey: string)
   if (!trimmedKey) {
     throw new Error('API Key is missing.');
   }
-  
+
   if (!isValidApiKey(trimmedKey)) {
-    throw new Error('Invalid API Key format. Please check that you entered a valid Gemini API key.');
+    throw new Error(
+      'Invalid API Key format. Please check that you entered a valid Gemini API key.'
+    );
   }
 
   // Check rate limit
