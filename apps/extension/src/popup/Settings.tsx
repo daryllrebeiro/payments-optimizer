@@ -10,8 +10,14 @@ export default function Settings({ profile, onUpdateProfile }: SettingsProps) {
   const valuations = profile.rewardPreferences.defaultValuations || {};
 
   const handleUpdateValuation = (programName: string, valueStr: string) => {
-    const numeric = parseFloat(valueStr);
-    if (isNaN(numeric) || numeric < 0) return;
+    // Fix S-07: decimal-string parse — never parseFloat money. Up to 2dp,
+    // scaled by the currency's own divisor (JPY rejects decimals).
+    const m = /^(\d+)(?:\.(\d{1,2}))?$/.exec(valueStr.trim());
+    if (!m) return;
+    const minor =
+      BigInt(m[1] as string) * 100n + BigInt(((m[2] as string) ?? '').padEnd(2, '0') || '0');
+    if (profile.currency === 'JPY' && (m[2] as string | undefined)) return;
+    if (minor < 0n) return;
 
     const updated = {
       ...profile,
@@ -20,7 +26,7 @@ export default function Settings({ profile, onUpdateProfile }: SettingsProps) {
         defaultValuations: {
           ...valuations,
           [programName]: {
-            amountMinor: BigInt(Math.round(numeric * 100)),
+            amountMinor: minor,
             currency: profile.currency,
           } as unknown as import('@payments-optimizer/domain').Money,
         },
@@ -44,33 +50,37 @@ export default function Settings({ profile, onUpdateProfile }: SettingsProps) {
   };
 
   const [apiKey, setApiKey] = React.useState('');
+  const [rememberDevice, setRememberDevice] = React.useState(false);
 
   React.useEffect(() => {
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.get(['geminiApiKey'], (result) => {
-        if (result.geminiApiKey) {
-          setApiKey(String(result.geminiApiKey));
-        }
-      });
-    }
+    (async () => {
+      const { getApiKey } = await import('./api-key-store.js');
+      const existing = await getApiKey();
+      if (existing) setApiKey(existing);
+      if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+        const r = await chrome.storage.local.get(['geminiApiKeyRemember']);
+        setRememberDevice(Boolean((r as Record<string, unknown>)['geminiApiKeyRemember']));
+      }
+    })();
   }, []);
 
   const handleUpdateApiKey = async (key: string) => {
     setApiKey(key);
+    const { storeApiKey } = await import('./api-key-store.js');
+    await storeApiKey(key, rememberDevice);
+  };
 
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      // Validate key format before storing
-      const { isValidApiKey } = await import('./ai-explain.js');
+  const handleRememberToggle = async (remember: boolean) => {
+    setRememberDevice(remember);
+    const { storeApiKey } = await import('./api-key-store.js');
+    await storeApiKey(apiKey, remember);
+  };
 
-      if (key.trim() && !isValidApiKey(key.trim())) {
-        // Store the key anyway for user to correct later, but show a warning
-        console.warn(
-          'API key format may be invalid. User should verify key at https://aistudio.google.com/'
-        );
-      }
-
-      chrome.storage.local.set({ geminiApiKey: key });
-    }
+  const handleRevokeApiKey = async () => {
+    const { revokeApiKey } = await import('./api-key-store.js');
+    await revokeApiKey();
+    setApiKey('');
+    setRememberDevice(false);
   };
 
   return (
@@ -220,6 +230,17 @@ export default function Settings({ profile, onUpdateProfile }: SettingsProps) {
           value={apiKey}
           onChange={(e) => handleUpdateApiKey(e.target.value)}
         />
+        <label style={{ fontSize: '11px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+          <input
+            type="checkbox"
+            checked={rememberDevice}
+            onChange={(e) => handleRememberToggle(e.target.checked)}
+          />
+          Remember on this device (otherwise cleared on browser close)
+        </label>
+        <button type="button" className="form-input" onClick={handleRevokeApiKey}>
+          Revoke key (clears session + device copy — then revoke at aistudio.google.com)
+        </button>
       </div>
     </div>
   );

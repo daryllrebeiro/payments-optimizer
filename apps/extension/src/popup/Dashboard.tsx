@@ -25,13 +25,11 @@ export default function Dashboard({ profile, recommendation }: DashboardProps) {
   const [explainError, setExplainError] = useState('');
 
   React.useEffect(() => {
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.get(['geminiApiKey'], (result) => {
-        if (result.geminiApiKey) {
-          setApiKey(String(result.geminiApiKey));
-        }
-      });
-    }
+    (async () => {
+      const { getApiKey } = await import('./api-key-store.js');
+      const existing = await getApiKey();
+      if (existing) setApiKey(existing);
+    })();
   }, []);
 
   const handleExplainClick = async () => {

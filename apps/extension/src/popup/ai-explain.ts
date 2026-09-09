@@ -1,4 +1,5 @@
 import type { SerializedStrategy } from '../types/messages.js';
+import { RateLimiter } from '@payments-optimizer/domain';
 
 interface ExplainInput {
   merchantId: string;
@@ -24,12 +25,22 @@ export function isValidApiKey(apiKey: string): boolean {
 }
 
 /**
+ * Fix S-06: canonical fail-CLOSED limiter shared with the service worker.
+ * Storage outage must not silently allow unlimited billable calls.
+ */
+const memoryLimiter = new RateLimiter({
+  maxRequests: RATE_LIMIT_MAX_REQUESTS,
+  windowMs: RATE_LIMIT_WINDOW_MS,
+});
+
+/**
  * Checks if the rate limit has been exceeded for AI API calls
  * @returns true if under the limit, false if rate limited
  */
 async function isRateLimited(): Promise<boolean> {
+  if (memoryLimiter.isLimited()) return true;
   if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
-    return false;
+    return true; // Fix S-06: fail closed when storage unavailable.
   }
 
   const now = Date.now();
@@ -119,6 +130,10 @@ export async function generateAIExplanation(input: ExplainInput, apiKey: string)
     'Keep the explanation under 3 sentences, professional, and formatted in clean markdown.',
   ].join('\n');
 
+  // Fix S-02: Gemini requires the key as a query param (no header-Key
+  // alternative) — documented residual in ADR-006. Minimize: no-referrer,
+  // never log the URL, and sanitize every error so key material cannot
+  // leak through status/body text.
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
   const response = await fetch(url, {
@@ -126,6 +141,7 @@ export async function generateAIExplanation(input: ExplainInput, apiKey: string)
     headers: {
       'Content-Type': 'application/json',
     },
+    referrerPolicy: 'no-referrer',
     body: JSON.stringify({
       contents: [
         {
@@ -160,9 +176,8 @@ export async function generateAIExplanation(input: ExplainInput, apiKey: string)
   }
 
   if (!response.ok) {
-    const errorData = (await response.json().catch(() => ({}))) as GeminiErrorResponse;
-    const msg = errorData?.error?.message || `HTTP error ${response.status}`;
-    throw new Error(`Gemini API call failed: ${msg}`);
+    // Fix S-02: sanitized — status code only, never URL/body (may echo key).
+    throw new Error(`Gemini API call failed: HTTP ${response.status}`);
   }
 
   const data = (await response.json()) as GeminiSuccessResponse;

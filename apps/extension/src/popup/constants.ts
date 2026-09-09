@@ -2,7 +2,9 @@
  * UI Constants for the PaymentsOptimizer Extension
  */
 
-export const AI_API_KEY_STORAGE_KEY = 'geminiApiKey';
+// Fix S-01: key scope lives in api-key-store.ts (session-first, local only
+// on explicit opt-in). No direct geminiApiKey literal here by design.
+export { SESSION_KEY as AI_API_KEY_STORAGE_KEY } from './api-key-store.js';
 export const RATE_LIMIT_STORAGE_KEY = 'aiRateLimit';
 export const OPTIMIZATION_RATE_LIMIT_KEY = 'optimizationRateLimit';
 

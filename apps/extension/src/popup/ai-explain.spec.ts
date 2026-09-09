@@ -60,4 +60,34 @@ describe('Task 0.10 — AI explanation gating', () => {
     expect(isValidApiKey('short')).toBe(false);
     expect(isValidApiKey('AIza' + 'a'.repeat(34))).toBe(false);
   });
+
+  it('Fix S-02/S-06 — fetch uses no-referrer and errors never echo the key', async () => {
+    const key = 'AIza' + 'a'.repeat(35);
+    let captured: any = null;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init: any) => {
+        captured = { url, init };
+        return { ok: false, status: 400, json: async () => ({}) };
+      })
+    );
+    (globalThis as any).chrome = {
+      storage: {
+        local: {
+          get: (_k: unknown, cb: (r: unknown) => void) => cb({}),
+          set: () => {},
+        },
+      },
+    };
+    await expect(generateAIExplanation(input, key)).rejects.toThrow('HTTP 400');
+    expect(captured.init.referrerPolicy).toBe('no-referrer');
+    await expect(generateAIExplanation(input, key)).rejects.not.toThrow(key);
+  });
+
+  it('Fix S-06 — fail-closed when storage unavailable', async () => {
+    const key = 'AIza' + 'a'.repeat(35);
+    (globalThis as any).chrome = undefined;
+    vi.stubGlobal('fetch', vi.fn());
+    await expect(generateAIExplanation(input, key)).rejects.toThrow('Rate limit exceeded');
+  });
 });
