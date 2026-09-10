@@ -21,7 +21,7 @@ export const CartItemSchema = z.object({
   name: z.string(),
   price: SerializedMoneySchema,
   quantity: z.number().int().positive(),
-  category: z.string(),
+  category: z.string().optional(),
 });
 
 /**
@@ -35,7 +35,7 @@ export const CartSchema = z.object({
   shipping: SerializedMoneySchema,
   taxes: SerializedMoneySchema,
   total: SerializedMoneySchema,
-  currency: z.enum(['INR', 'USD', 'EUR', 'GBP']),
+  currency: z.enum(['INR', 'USD', 'EUR', 'GBP', 'JPY', 'SGD', 'AED']),
 });
 
 export type SerializedCart = z.infer<typeof CartSchema>;
@@ -79,8 +79,6 @@ export const SerializedStrategySchema = z.object({
   partnerSavings: SerializedMoneySchema.optional(),
   cardSavings: SerializedMoneySchema.optional(),
 });
-
-export type SerializedStrategy = z.infer<typeof SerializedStrategySchema>;
 
 /**
  * Schema for OPTIMIZE_PAYMENT message payload
@@ -126,6 +124,11 @@ export const ConfirmSavingsMessageSchema = z.object({
       confidence: z.number().min(0).max(1),
       complexityScore: z.number().min(0),
       stepDescriptions: z.array(z.string()),
+      // Fix D8: include recipeSteps for benefit ledger derivation (F9)
+      recipeSteps: z.array(SerializedRecipeStepSchema).optional(),
+      voucherSavings: SerializedMoneySchema.optional(),
+      partnerSavings: SerializedMoneySchema.optional(),
+      cardSavings: SerializedMoneySchema.optional(),
     }),
     benefitsApplied: z.array(
       z.object({
@@ -143,6 +146,19 @@ export const ConfirmSavingsMessageSchema = z.object({
 });
 
 export type ConfirmSavingsMessage = z.infer<typeof ConfirmSavingsMessageSchema>;
+
+/**
+ * Fix D8: first-class SAVINGS_CONFIRMED response schema — replaces
+ * the `as unknown as OptimizePaymentResponse` cast in the service worker.
+ */
+export const SavingsConfirmedMessageSchema = z.object({
+  type: z.literal('SAVINGS_CONFIRMED'),
+  confirmed: z.literal(true),
+});
+
+export type SavingsConfirmedMessage = z.infer<
+  typeof SavingsConfirmedMessageSchema
+>;
 
 /**
  * Schema for optimization result
@@ -173,15 +189,20 @@ export const OptimizePaymentErrorResponseSchema = z.object({
 export type OptimizePaymentErrorResponse = z.infer<typeof OptimizePaymentErrorResponseSchema>;
 
 /**
- * Union of all message types
+ * Union of all message types from service worker to content script
+ */
+export const BackgroundToContentMessageSchema = z.union([
+  OptimizePaymentResponseSchema,
+  OptimizePaymentErrorResponseSchema,
+  SavingsConfirmedMessageSchema,
+]);
+
+/**
+ * Union of all message types from content script to service worker
  */
 export const ContentToBackgroundMessageSchema = z.union([
   OptimizePaymentMessageSchema,
   ConfirmSavingsMessageSchema,
-]);
-export const BackgroundToContentMessageSchema = z.union([
-  OptimizePaymentResponseSchema,
-  OptimizePaymentErrorResponseSchema,
 ]);
 
 export type ContentToBackgroundMessage = z.infer<typeof ContentToBackgroundMessageSchema>;
@@ -216,6 +237,64 @@ export function validateCart(cart: unknown): SerializedCart {
   return CartSchema.parse(cart);
 }
 
-export function validateStrategy(strategy: unknown): SerializedStrategy {
+export function validateStrategy(strategy: unknown): z.infer<typeof SerializedStrategySchema> {
   return SerializedStrategySchema.parse(strategy);
+}
+
+/**
+ * Fix D8: type guard for savings entries coming from the durable queue.
+ * Replaces the `payload as never` cast in executeSaveTask.
+ */
+export function isStoredSavingsEntry(
+  value: unknown
+): value is {
+  id: string;
+  timestamp: number;
+  merchantId: string;
+  cartTotal: { amountMinor: string; currency: string };
+  selectedStrategy: {
+    id: string;
+    immediateDiscount: { amountMinor: string; currency: string };
+    rewardValue: { amountMinor: string; currency: string };
+    totalBenefit: { amountMinor: string; currency: string };
+    confidence: number;
+    complexityScore: number;
+    stepDescriptions: string[];
+    recipeSteps?: Array<{
+      actionType: string;
+      benefitSourceId: string;
+      benefitSourceName: string;
+      amountApplied: { amountMinor: string; currency: string };
+    }>;
+    voucherSavings?: { amountMinor: string; currency: string };
+    partnerSavings?: { amountMinor: string; currency: string };
+    cardSavings?: { amountMinor: string; currency: string };
+  };
+  originalTotal: { amountMinor: string; currency: string };
+  savings: { amountMinor: string; currency: string };
+  benefitsApplied: Array<{
+    benefitId: string;
+    benefitType: string;
+    benefitSourceId: string;
+    benefitSourceName: string;
+    amountApplied: { amountMinor: string; currency: string };
+  }>;
+} {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'id' in value &&
+    'merchantId' in value &&
+    'cartTotal' in value &&
+    'selectedStrategy' in value &&
+    'originalTotal' in value &&
+    'savings' in value &&
+    'benefitsApplied' in value
+  );
+}
+
+export function validateSavingsConfirmedMessage(
+  message: unknown
+): SavingsConfirmedMessage {
+  return SavingsConfirmedMessageSchema.parse(message);
 }

@@ -296,7 +296,7 @@ export interface CartItem {
   name: string;
   price: Money;
   quantity: number;
-  category?: string;
+  category?: string | undefined;
 }
 
 export interface Discount {
@@ -491,6 +491,44 @@ export interface SavingsEntry {
   savings: Money;
   paymentMethodUsed?: PaymentMethod;
   benefitsApplied: BenefitApplication[];
+}
+
+// Fix D8: explicit interfaces for message types with proper optional
+// handling for exactOptionalPropertyTypes. These override the Zod-inferred
+// types which use T | undefined instead of proper optional properties.
+// Note: with exactOptionalPropertyTypes, optional properties must allow
+// explicit undefined to be compatible with Zod-inferred types.
+// Also accept both string (serialized) and bigint (domain) for amountMinor
+// to accommodate the serialization boundary.
+export interface SerializedRecipeStep {
+  stepNumber: number;
+  phase: 'BEFORE_PAYMENT' | 'AT_PAYMENT' | 'POST_PAYMENT';
+  actionType: string;
+  benefitId?: string | undefined;
+  benefitSourceId: string;
+  benefitSourceName: string;
+  description: string;
+  amountApplied: { amountMinor: bigint | string; currency: string };
+  savingsGenerated: { amountMinor: bigint | string; currency: string };
+  instructions?: string | undefined;
+  codeToApply?: string | undefined;
+}
+
+export interface SerializedStrategy {
+  id: string;
+  immediateDiscount: { amountMinor: bigint | string; currency: string };
+  rewardValue: { amountMinor: bigint | string; currency: string };
+  futureBenefit: { amountMinor: bigint | string; currency: string };
+  fees: { amountMinor: bigint | string; currency: string };
+  effectiveCost: { amountMinor: bigint | string; currency: string };
+  totalBenefit: { amountMinor: bigint | string; currency: string };
+  confidence: number;
+  complexityScore: number;
+  stepDescriptions: string[];
+  recipeSteps?: SerializedRecipeStep[] | undefined;
+  voucherSavings?: { amountMinor: bigint | string; currency: string } | undefined;
+  partnerSavings?: { amountMinor: bigint | string; currency: string } | undefined;
+  cardSavings?: { amountMinor: bigint | string; currency: string } | undefined;
 }
 
 // Serialization and Message Schemas

@@ -5,6 +5,7 @@ import type {
   ContentToBackgroundMessage,
   ConfirmSavingsMessage,
   OptimizePaymentMessage,
+  SavingsConfirmedMessage,
 } from '@payments-optimizer/domain';
 // F3: the wire codec is the library's DomainSerializer — namespaced
 // {"__type":"bigint","value":"..."} encoding (F16: cannot collide with a
@@ -12,7 +13,12 @@ import type {
 // domain serialization instead of a hand-rolled per-extension format.
 import { DomainSerializer } from '@payments-optimizer/domain';
 
-export type { ContentToBackgroundMessage, ConfirmSavingsMessage, OptimizePaymentMessage };
+export type {
+  ContentToBackgroundMessage,
+  ConfirmSavingsMessage,
+  OptimizePaymentMessage,
+  SavingsConfirmedMessage,
+};
 
 // ── Outbound: Content Script → Service Worker ────────────────────────────────
 
@@ -81,7 +87,8 @@ export interface OptimizePaymentErrorResponse {
 
 export type BackgroundToContentMessage =
   | OptimizePaymentResponse
-  | OptimizePaymentErrorResponse;
+  | OptimizePaymentErrorResponse
+  | SavingsConfirmedMessage;
 
 // ── Serialization helpers ────────────────────────────────────────────────────
 

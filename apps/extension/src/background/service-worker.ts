@@ -13,19 +13,20 @@
 
 import { generateCandidates, filterDominated, rankStrategies } from '@payments-optimizer/optimizer';
 import { UnifiedBenefitOptimizer, PublicBenefitCatalog } from '@payments-optimizer/benefits';
-import type { UserProfile } from '@payments-optimizer/domain';
+import type { UserProfile, Cart } from '@payments-optimizer/domain';
 import {
   parseUserProfile,
   validateProfileIntegrity,
   serializeProfileForStorage,
 } from '@payments-optimizer/domain';
-import { validateMessage, RateLimiter } from '@payments-optimizer/domain';
+import { validateMessage, RateLimiter, validateSavingsConfirmedMessage, isStoredSavingsEntry } from '@payments-optimizer/domain';
 import { PublicDataManager, CartSchema } from '@payments-optimizer/offer-engine';
 import { SavingsRepository, DurableTaskQueue } from '@payments-optimizer/storage';
 import type {
   ContentToBackgroundMessage,
   OptimizePaymentResponse,
   OptimizePaymentErrorResponse,
+  SavingsConfirmedMessage,
 } from '../types/messages.js';
 import { deserializeCart, serializeStrategy } from '../types/messages.js';
 
@@ -189,9 +190,13 @@ async function persistConfirmedSavings(savingsEntry: Record<string, unknown>): P
  * F1/F3: the single code path that writes a savings entry — through the
  * SavingsRepository (raw canonical shape, indexed, awaited, errors
  * surfaced as rejections that the queue records with backoff).
+ * Fix D8: use type guard instead of `as never` cast.
  */
 async function executeSaveTask(payload: unknown): Promise<void> {
-  await savingsRepository.put(payload as never);
+  if (!isStoredSavingsEntry(payload)) {
+    throw new Error('executeSaveTask: payload failed StoredSavingsEntry guard');
+  }
+  await savingsRepository.put(payload);
 }
 
 /**
@@ -260,7 +265,7 @@ function isSameCurrency(
  */
 async function saveConfirmedOptimization(
   cart: import('@payments-optimizer/domain').Cart,
-  strategy: import('../types/messages.js').SerializedStrategy,
+  strategy: import('@payments-optimizer/domain').SerializedStrategy,
   originalTotal: import('@payments-optimizer/domain').Money,
   benefitsApplied: Array<{
     benefitId: string;
@@ -412,7 +417,7 @@ chrome.runtime.onMessage.addListener(
   (
     message: unknown,
     _sender: chrome.runtime.MessageSender,
-    sendResponse: (response: OptimizePaymentResponse | OptimizePaymentErrorResponse) => void
+    sendResponse: (response: OptimizePaymentResponse | OptimizePaymentErrorResponse | SavingsConfirmedMessage) => void
   ) => {
     // F3: the message itself is untrusted — validate its shape with the
     // library schema before anything else. Unknown or malformed messages
@@ -447,9 +452,8 @@ chrome.runtime.onMessage.addListener(
 
           const rawCart = deserializeCart(cartJson);
           // Strict Zod validation of untrusted inputs from the page script context
-          const cart = CartSchema.parse(
-            rawCart
-          ) as unknown as import('@payments-optimizer/domain').Cart;
+          // CartSchema.parse returns the validated Cart type; no cast needed.
+          const cart = CartSchema.parse(rawCart);
 
           // F7/F8: validate the profile — never optimize against unvalidated
           // data, never fall back to fixture cards
@@ -545,10 +549,7 @@ chrome.runtime.onMessage.addListener(
           const confirmation = msg.payload;
 
           if (processedConfirms.has(confirmation.idempotencyKey)) {
-            sendResponse({
-              type: 'SAVINGS_CONFIRMED',
-              confirmed: true,
-            } as unknown as OptimizePaymentResponse);
+            sendResponse(validateSavingsConfirmedMessage({ type: 'SAVINGS_CONFIRMED', confirmed: true }));
             return;
           }
 
@@ -558,10 +559,7 @@ chrome.runtime.onMessage.addListener(
             await logSecurityEvent('CURRENCY_MISMATCH', {
               merchantId: confirmation.merchantId,
             });
-            sendResponse({
-              type: 'SAVINGS_CONFIRMED',
-              confirmed: true,
-            } as unknown as OptimizePaymentResponse);
+            sendResponse(validateSavingsConfirmedMessage({ type: 'SAVINGS_CONFIRMED', confirmed: true }));
             return;
           }
 
@@ -580,13 +578,16 @@ chrome.runtime.onMessage.addListener(
             return;
           }
 
-          const cart = {
+          const cart = CartSchema.parse({
             merchantId: confirmation.merchantId,
-            total: {
-              amountMinor: BigInt(confirmation.cartTotal.amountMinor),
-              currency: confirmation.cartTotal.currency,
-            },
-          } as unknown as import('@payments-optimizer/domain').Cart;
+            items: [],
+            subtotal: { amountMinor: confirmation.cartTotal.amountMinor, currency: confirmation.cartTotal.currency },
+            discounts: [],
+            shipping: { amountMinor: '0', currency: confirmation.cartTotal.currency },
+            taxes: { amountMinor: '0', currency: confirmation.cartTotal.currency },
+            total: { amountMinor: confirmation.cartTotal.amountMinor, currency: confirmation.cartTotal.currency },
+            currency: confirmation.cartTotal.currency,
+          });
 
           const originalTotal = {
             amountMinor: BigInt(confirmation.cartTotal.amountMinor),
@@ -597,15 +598,7 @@ chrome.runtime.onMessage.addListener(
           // recipeSteps (stable benefitSourceId join keys) instead of
           // persisting an empty benefits array. benefitId falls back to
           // benefitSourceId — a name string is never a safe join key.
-          const strategyWithSteps = confirmation.strategy as unknown as {
-            recipeSteps?: Array<{
-              actionType: string;
-              benefitSourceId: string;
-              benefitSourceName: string;
-              amountApplied: { amountMinor: string; currency: string };
-            }>;
-          };
-          const benefitsFromSteps = (strategyWithSteps.recipeSteps ?? []).map((s) => ({
+          const benefitsFromSteps = (confirmation.strategy.recipeSteps ?? []).map((s) => ({
             benefitId: s.benefitSourceId,
             benefitType: s.actionType,
             benefitSourceId: s.benefitSourceId,
@@ -624,9 +617,73 @@ chrome.runtime.onMessage.addListener(
             sendResponse(pageError('VOUCHER_LOCKED', lease.locked));
             return;
           }
-          await saveConfirmedOptimization(cart, confirmation.strategy, originalTotal, benefitsFromSteps);
+          // Fix D8: convert serialized strategy (strings) to domain form (bigint)
+          // before passing to saveConfirmedOptimization.
+          function toDomainStrategy(
+            s: typeof confirmation.strategy
+          ): import('@payments-optimizer/domain').SerializedStrategy {
+            const base = {
+              ...s,
+              immediateDiscount: { amountMinor: BigInt(s.immediateDiscount.amountMinor), currency: s.immediateDiscount.currency },
+              rewardValue: { amountMinor: BigInt(s.rewardValue.amountMinor), currency: s.rewardValue.currency },
+              futureBenefit: { amountMinor: BigInt(s.futureBenefit.amountMinor), currency: s.futureBenefit.currency },
+              fees: { amountMinor: BigInt(s.fees.amountMinor), currency: s.fees.currency },
+              effectiveCost: { amountMinor: BigInt(s.effectiveCost.amountMinor), currency: s.effectiveCost.currency },
+              totalBenefit: { amountMinor: BigInt(s.totalBenefit.amountMinor), currency: s.totalBenefit.currency },
+              voucherSavings: s.voucherSavings ? { amountMinor: BigInt(s.voucherSavings.amountMinor), currency: s.voucherSavings.currency } : undefined,
+              partnerSavings: s.partnerSavings ? { amountMinor: BigInt(s.partnerSavings.amountMinor), currency: s.partnerSavings.currency } : undefined,
+              cardSavings: s.cardSavings ? { amountMinor: BigInt(s.cardSavings.amountMinor), currency: s.cardSavings.currency } : undefined,
+            };
+// Fix D8: convert serialized recipe step to domain form (bigint).
+          type SerializedRecipeStep = {
+            stepNumber: number;
+            phase: 'BEFORE_PAYMENT' | 'AT_PAYMENT' | 'POST_PAYMENT';
+            actionType: string;
+            benefitId?: string | undefined;
+            benefitSourceId: string;
+            benefitSourceName: string;
+            description: string;
+            amountApplied: { amountMinor: string; currency: string };
+            savingsGenerated: { amountMinor: string; currency: string };
+            instructions?: string | undefined;
+            codeToApply?: string | undefined;
+          };
+            function toDomainRecipeStep(
+              rs: SerializedRecipeStep
+            ): import('@payments-optimizer/domain').SerializedRecipeStep {
+              return {
+                stepNumber: rs.stepNumber,
+                phase: rs.phase,
+                actionType: rs.actionType,
+                benefitId: rs.benefitId,
+                benefitSourceId: rs.benefitSourceId,
+                benefitSourceName: rs.benefitSourceName,
+                description: rs.description,
+                amountApplied: { amountMinor: BigInt(rs.amountApplied.amountMinor), currency: rs.amountApplied.currency },
+                savingsGenerated: { amountMinor: BigInt(rs.savingsGenerated.amountMinor), currency: rs.savingsGenerated.currency },
+                instructions: rs.instructions,
+                codeToApply: rs.codeToApply,
+              } as import('@payments-optimizer/domain').SerializedRecipeStep;
+            }
+            // Fix exactOptionalPropertyTypes: only include recipeSteps when present
+            if (s.recipeSteps) {
+              const domainRecipeSteps = s.recipeSteps.map(toDomainRecipeStep);
+              return {
+                ...base,
+                recipeSteps: domainRecipeSteps,
+              };
+            }
+            return base;
+          }
+          const strategyForSave = toDomainStrategy(confirmation.strategy);
+          await saveConfirmedOptimization(
+            cart,
+            strategyForSave,
+            originalTotal,
+            benefitsFromSteps
+          );
           processedConfirms.add(confirmation.idempotencyKey);
-          sendResponse({ type: 'SAVINGS_CONFIRMED', confirmed: true } as unknown as OptimizePaymentResponse);
+          sendResponse(validateSavingsConfirmedMessage({ type: 'SAVINGS_CONFIRMED', confirmed: true }));
         } catch (err) {
           sendResponse(pageError('INVALID_REQUEST', err));
         }
