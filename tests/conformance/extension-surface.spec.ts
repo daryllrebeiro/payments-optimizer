@@ -47,10 +47,11 @@ describe('Task 0.1 — manifest surface stays minimal', () => {
     );
   });
 
-  it('requests only storage + activeTab + alarms permissions', () => {
+  it('requests only storage + activeTab + alarms + notifications permissions', () => {
     // "alarms" was added with the F1 durable-queue remediation (wake the
     // service worker to retry persisted savings tasks — ADR-003).
-    expect([...manifest.permissions].sort()).toEqual(['activeTab', 'alarms', 'storage']);
+    // "notifications" was added for Feature 2 loyalty program expiry alerts.
+    expect([...manifest.permissions].sort()).toEqual(['activeTab', 'alarms', 'notifications', 'storage']);
   });
 
   it('exposes no web-accessible resources', () => {

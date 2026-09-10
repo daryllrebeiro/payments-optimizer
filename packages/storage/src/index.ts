@@ -17,6 +17,7 @@ export * from './operations.js';
 
 // Export savings repository and migrations
 export * from './savings-repository.js';
+export * from './loyalty-repository.js';
 export * from './migrations/v2-add-savings-indexes.js';
 
 // Database Schema Migrator

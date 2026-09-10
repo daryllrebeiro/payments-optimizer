@@ -10,9 +10,18 @@ import Settings from './Settings.js';
 import Diagnostics from './Diagnostics.js';
 import SavingsSummary from './SavingsSummary.js';
 import SavingsHistory from './SavingsHistory.js';
+import LoyaltyPrograms from './LoyaltyPrograms.js';
 import { announce } from './accessibility.js';
+import { FEATURE_LOYALTY_PROGRAM_TRACKER } from './constants.js';
 
-export type ViewType = 'DASHBOARD' | 'BENEFITS' | 'CARDS' | 'SETTINGS' | 'DIAGNOSTICS' | 'SAVINGS';
+export type ViewType =
+  | 'DASHBOARD'
+  | 'BENEFITS'
+  | 'CARDS'
+  | 'SETTINGS'
+  | 'DIAGNOSTICS'
+  | 'SAVINGS'
+  | 'LOYALTY';
 
 // Savings view component (local to App.tsx)
 function SavingsView({ profile }: { profile: UserProfile }) {
@@ -315,6 +324,7 @@ export default function App() {
       'BENEFITS',
       'CARDS',
       'SAVINGS',
+      ...(FEATURE_LOYALTY_PROGRAM_TRACKER ? (['LOYALTY'] as const) : ([] as const)),
       'SETTINGS',
       'DIAGNOSTICS',
     ];
@@ -355,6 +365,8 @@ export default function App() {
         );
       case 'SAVINGS':
         return <SavingsView profile={profile} />;
+      case 'LOYALTY':
+        return <LoyaltyPrograms profile={profile} />;
       default:
         return null;
     }

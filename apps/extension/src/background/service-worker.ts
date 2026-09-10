@@ -231,9 +231,15 @@ async function drainDurableQueue(): Promise<void> {
 // triggers the service worker. (Requires the "alarms" permission.)
 if (typeof chrome !== 'undefined' && chrome.alarms) {
   chrome.alarms.create('drain-durable-queue', { periodInMinutes: 1 });
+  chrome.alarms.create('loyalty-expiry-check', { periodInMinutes: 24 * 60 });
   chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === 'drain-durable-queue') {
       void drainDurableQueue();
+    } else if (alarm.name === 'loyalty-expiry-check') {
+      // Feature 2: daily loyalty program expiry check
+      import('./loyalty-alerts.js').then(({ runDailyLoyaltyExpiryCheck }) => {
+        void runDailyLoyaltyExpiryCheck();
+      });
     }
   });
 }

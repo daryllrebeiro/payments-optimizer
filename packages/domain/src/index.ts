@@ -574,6 +574,20 @@ export {
   ErrorCode,
 } from './errors.js';
 
+// Loyalty Program Balance Tracker (Feature 2)
+export type LoyaltyProgramType = 'airline' | 'hotel' | 'retail' | 'other';
+
+export interface LoyaltyProgramBalance {
+  id: string;
+  programName: string;
+  programType: LoyaltyProgramType;
+  balance: number;
+  userEstimatedValuePerUnitMinor?: bigint;
+  lastUpdatedTimestamp: number;
+  expiryDate?: number;
+  expiryPolicyNote?: string;
+}
+
 // Clock abstraction for time handling
 export * from './clock.js';
 

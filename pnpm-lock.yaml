@@ -269,7 +269,11 @@ importers:
 
   packages/security: {}
 
-  packages/storage: {}
+  packages/storage:
+    dependencies:
+      '@payments-optimizer/domain':
+        specifier: workspace:*
+        version: link:../domain
 
   packages/test-fixtures:
     dependencies:

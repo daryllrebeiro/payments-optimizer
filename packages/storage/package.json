@@ -8,5 +8,7 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@payments-optimizer/domain": "workspace:*"
+  }
 }

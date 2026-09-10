@@ -26,8 +26,7 @@ export const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 // Recommendation cache TTL
 export const RECOMMENDATION_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-// UI Animation
-export const ANIMATION_DURATION_MS = 300;
+// Feature flags
+export const FEATURE_LOYALTY_PROGRAM_TRACKER = true;
 
-// Loading states
-export const LOADING_TIMEOUT_MS = 10000;
+export const FEATURE_PRICE_COMPARISON = false;
