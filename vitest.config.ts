@@ -21,6 +21,13 @@ export default defineConfig({
       escapeString: true,
       printBasicPrototype: true,
     },
+    // Run tests sequentially to avoid test pollution from shared global state
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true,
+      },
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
